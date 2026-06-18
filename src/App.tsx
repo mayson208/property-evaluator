@@ -46,6 +46,8 @@ import OfferCalculator from './components/OfferCalculator'
 import HOACalc from './components/HOACalc'
 import PropertyTaxAppeal from './components/PropertyTaxAppeal'
 import LandlordROI from './components/LandlordROI'
+import BorrowerQualifier from './components/BorrowerQualifier'
+import LeaseOption from './components/LeaseOption'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -93,6 +95,8 @@ const TABS = [
   { id: 'hoa',         label: 'HOA Impact',    icon: '🏘' },
   { id: 'taxappeal',   label: 'Tax Appeal',    icon: '⚖️' },
   { id: 'landlord',    label: 'Landlord ROI',  icon: '🏠' },
+  { id: 'qualify',     label: 'Qualifier',     icon: '✅' },
+  { id: 'leaseoption', label: 'Lease Option',  icon: '🔑' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -228,6 +232,8 @@ export default function App() {
               {activeTab === 'hoa'         && <HOACalc />}
               {activeTab === 'taxappeal'   && <PropertyTaxAppeal />}
               {activeTab === 'landlord'    && <LandlordROI />}
+              {activeTab === 'qualify'     && <BorrowerQualifier />}
+              {activeTab === 'leaseoption' && <LeaseOption />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
