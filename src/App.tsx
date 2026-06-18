@@ -25,6 +25,8 @@ import TaxBenefits from './components/TaxBenefits'
 import RefinanceCalc from './components/RefinanceCalc'
 import DownPaymentTracker from './components/DownPaymentTracker'
 import SellerNetSheet from './components/SellerNetSheet'
+import Exchange1031 from './components/Exchange1031'
+import BuyingTimeline from './components/BuyingTimeline'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -51,6 +53,8 @@ const TABS = [
   { id: 'refinance',    label: 'Refinance',     icon: '🔁' },
   { id: 'downpayment',  label: 'Down Payment',  icon: '🏦' },
   { id: 'sellersheet',  label: 'Seller Net',    icon: '📄' },
+  { id: 'exchange1031', label: '1031 Exchange', icon: '🔄' },
+  { id: 'timeline',     label: 'Buy Guide',     icon: '📅' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -165,6 +169,8 @@ export default function App() {
               {activeTab === 'refinance'    && <RefinanceCalc />}
               {activeTab === 'downpayment'  && <DownPaymentTracker />}
               {activeTab === 'sellersheet'  && <SellerNetSheet />}
+              {activeTab === 'exchange1031' && <Exchange1031 />}
+              {activeTab === 'timeline'     && <BuyingTimeline />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
