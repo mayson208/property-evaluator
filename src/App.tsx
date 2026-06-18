@@ -101,6 +101,7 @@ import TaxLienCalc from './components/TaxLienCalc'
 import RentRollAnalyzer from './components/RentRollAnalyzer'
 import CondoConversion from './components/CondoConversion'
 import BiWeeklyMortgage from './components/BiWeeklyMortgage'
+import ForeclosureAuction from './components/ForeclosureAuction'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -203,6 +204,7 @@ const TABS = [
   { id: 'rentroll',       label: 'Rent Roll',    icon: '📋' },
   { id: 'condoconvert',   label: 'Condo Convert', icon: '🏙' },
   { id: 'biweekly',       label: 'Mtg Accelerate', icon: '⚡' },
+  { id: 'foreclosure',    label: 'Foreclosure',   icon: '🏚' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -393,6 +395,7 @@ export default function App() {
               {activeTab === 'rentroll'         && <RentRollAnalyzer />}
               {activeTab === 'condoconvert'     && <CondoConversion />}
               {activeTab === 'biweekly'         && <BiWeeklyMortgage />}
+              {activeTab === 'foreclosure'      && <ForeclosureAuction />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
