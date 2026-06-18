@@ -87,6 +87,7 @@ import MortgagePointsCalc from './components/MortgagePointsCalc'
 import SaleLeasebackCalc from './components/SaleLeasebackCalc'
 import CostSegregation from './components/CostSegregation'
 import FixedVsARM from './components/FixedVsARM'
+import RealEstateSyndication from './components/RealEstateSyndication'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -175,6 +176,7 @@ const TABS = [
   { id: 'saleleaseback', label: 'Sale-Leaseback', icon: '🔁' },
   { id: 'costseg',       label: 'Cost Seg',     icon: '🏗' },
   { id: 'fixedvsarm',    label: 'Fixed vs ARM', icon: '📊' },
+  { id: 'syndication',   label: 'Syndication',  icon: '🤝' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -351,6 +353,7 @@ export default function App() {
               {activeTab === 'saleleaseback' && <SaleLeasebackCalc />}
               {activeTab === 'costseg'      && <CostSegregation />}
               {activeTab === 'fixedvsarm'   && <FixedVsARM />}
+              {activeTab === 'syndication'  && <RealEstateSyndication />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
