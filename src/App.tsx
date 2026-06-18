@@ -64,6 +64,7 @@ import ArmAnalyzer from './components/ArmAnalyzer'
 import RentalTaxCalc from './components/RentalTaxCalc'
 import PropertyInsurance from './components/PropertyInsurance'
 import PMIRemoval from './components/PMIRemoval'
+import EscrowAnalysis from './components/EscrowAnalysis'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -129,6 +130,7 @@ const TABS = [
   { id: 'rentaltax',    label: 'Rental Tax',      icon: '🧾' },
   { id: 'insurance',    label: 'Insurance',       icon: '🛡' },
   { id: 'pmiremoval',   label: 'PMI Removal',     icon: '✂️' },
+  { id: 'escrow',       label: 'Escrow',          icon: '🏛' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -282,6 +284,7 @@ export default function App() {
               {activeTab === 'rentaltax'   && <RentalTaxCalc />}
               {activeTab === 'insurance'   && <PropertyInsurance />}
               {activeTab === 'pmiremoval'  && <PMIRemoval />}
+              {activeTab === 'escrow'      && <EscrowAnalysis />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
