@@ -58,6 +58,7 @@ import ConvertToRental from './components/ConvertToRental'
 import DispositionCalc from './components/DispositionCalc'
 import PropertyLLC from './components/PropertyLLC'
 import PortfolioTracker from './components/PortfolioTracker'
+import OpportunityZone from './components/OpportunityZone'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -117,6 +118,7 @@ const TABS = [
   { id: 'disposition',  label: 'Exit Strategy',   icon: '🚪' },
   { id: 'llc',          label: 'LLC Analysis',    icon: '🏢' },
   { id: 'portfolio',    label: 'Portfolio',       icon: '📂' },
+  { id: 'oppzone',      label: 'Opp Zone',        icon: '🏗' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -264,6 +266,7 @@ export default function App() {
               {activeTab === 'disposition' && <DispositionCalc />}
               {activeTab === 'llc'         && <PropertyLLC />}
               {activeTab === 'portfolio'   && <PortfolioTracker />}
+              {activeTab === 'oppzone'     && <OpportunityZone />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
