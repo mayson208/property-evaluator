@@ -1,300 +1,342 @@
 import { useState, useMemo } from 'react'
-import { usePropertyStore } from '../store/usePropertyStore'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis } from 'recharts'
 
-function fmt(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+interface MonthInput { occupancy: number; adr: number }
+
+interface Inputs {
+  purchasePrice: number
+  downPaymentPct: number
+  mortgageRate: number
+  mortgageTerm: number
+  avgADR: number
+  avgOccupancy: number
+  platformFeePct: number
+  cleaningFeePerStay: number
+  avgStayNights: number
+  propertyMgmtPct: number
+  suppliesMo: number
+  utilitiesMo: number
+  insuranceAnnual: number
+  propertyTaxAnnual: number
+  hoa: number
+  annualMaintPct: number
+  longTermRent: number
+  longTermVacancyPct: number
+  longTermMgmtPct: number
+  useSeasonality: boolean
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Seasonal multipliers — indices relative to avg nightly rate
-const SEASONALITY: Record<string, number[]> = {
-  beach:    [0.55, 0.55, 0.70, 0.85, 1.10, 1.35, 1.50, 1.45, 1.20, 0.85, 0.65, 0.70],
-  ski:      [1.40, 1.35, 1.10, 0.75, 0.60, 0.60, 0.65, 0.65, 0.70, 0.90, 1.10, 1.30],
-  urban:    [0.85, 0.85, 0.95, 1.05, 1.10, 1.15, 1.10, 1.10, 1.10, 1.05, 0.90, 0.85],
-  suburban: [0.85, 0.85, 0.90, 0.95, 1.05, 1.10, 1.20, 1.20, 1.05, 0.95, 0.90, 0.90],
-  rural:    [0.80, 0.80, 0.90, 1.00, 1.10, 1.15, 1.25, 1.20, 1.05, 0.95, 0.85, 0.90],
+const DEFAULT_SEASONAL: MonthInput[] = [
+  { occupancy: 55, adr: 140 }, { occupancy: 58, adr: 145 }, { occupancy: 65, adr: 155 },
+  { occupancy: 72, adr: 168 }, { occupancy: 80, adr: 185 }, { occupancy: 88, adr: 210 },
+  { occupancy: 92, adr: 225 }, { occupancy: 90, adr: 220 }, { occupancy: 78, adr: 178 },
+  { occupancy: 68, adr: 158 }, { occupancy: 60, adr: 148 }, { occupancy: 58, adr: 152 },
+]
+
+const DEF: Inputs = {
+  purchasePrice: 450000, downPaymentPct: 25, mortgageRate: 7.25, mortgageTerm: 30,
+  avgADR: 180, avgOccupancy: 72, platformFeePct: 3, cleaningFeePerStay: 120, avgStayNights: 3.5,
+  propertyMgmtPct: 20, suppliesMo: 150, utilitiesMo: 220,
+  insuranceAnnual: 3200, propertyTaxAnnual: 5400, hoa: 0, annualMaintPct: 1.5,
+  longTermRent: 2200, longTermVacancyPct: 6, longTermMgmtPct: 10, useSeasonality: false,
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const N = (v: string) => parseFloat(v) || 0
+
+function monthlyMortgagePmt(principal: number, annualRate: number, termYears: number) {
+  if (annualRate === 0) return principal / (termYears * 12)
+  const r = annualRate / 100 / 12
+  const n = termYears * 12
+  return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1)
 }
 
 export default function ShortTermRental() {
-  const { result, monthlyRent, downPaymentPct, interestRate } = usePropertyStore()
+  const [inp, setInp] = useState<Inputs>(DEF)
+  const [months, setMonths] = useState<MonthInput[]>(DEFAULT_SEASONAL)
+  const set = (k: keyof Inputs, v: string | boolean) =>
+    setInp(p => ({ ...p, [k]: typeof DEF[k] === 'boolean' ? v : N(v as string) }))
+  const setMonth = (i: number, k: keyof MonthInput, v: string) =>
+    setMonths(ms => ms.map((m, idx) => idx === i ? { ...m, [k]: N(v) } : m))
 
-  const homeValue = result?.estimatedValue ?? 400000
-  const ltrMonthly = monthlyRent > 0 ? monthlyRent : Math.round(homeValue * 0.007)
+  const calc = useMemo(() => {
+    const {
+      purchasePrice, downPaymentPct, mortgageRate, mortgageTerm,
+      avgADR, avgOccupancy, platformFeePct, cleaningFeePerStay, avgStayNights,
+      propertyMgmtPct, suppliesMo, utilitiesMo, insuranceAnnual, propertyTaxAnnual,
+      hoa, annualMaintPct, longTermRent, longTermVacancyPct, longTermMgmtPct, useSeasonality,
+    } = inp
 
-  const [nightlyRate,    setNightlyRate]    = useState(Math.round(ltrMonthly / 20))
-  const [occupancyPct,   setOccupancyPct]   = useState(60)
-  const [cleaningFee,    setCleaningFee]    = useState(80)
-  const [platformFee,    setPlatformFee]    = useState(3)
-  const [hostFee,        setHostFee]        = useState(3)
-  const [cleaningsMonth, setCleaningsMonth] = useState(6)
-  const [propMgmtPct,   setPropMgmtPct]   = useState(0)
-  const [location,       setLocation]       = useState<keyof typeof SEASONALITY>('urban')
-  const [annualTaxPct,   setAnnualTaxPct]   = useState(1.1)
-  const [annualInsurance, setAnnualInsurance] = useState(Math.round(homeValue * 0.006))
-  const [monthlyUtil,    setMonthlyUtil]    = useState(200)
-  const [suppliesMo,     setSuppliesMo]     = useState(100)
-  const [loanBalance,    setLoanBalance]    = useState(Math.round(homeValue * (1 - downPaymentPct / 100)))
+    const downPayment = purchasePrice * downPaymentPct / 100
+    const loanAmount = purchasePrice - downPayment
+    const monthlyMortgage = monthlyMortgagePmt(loanAmount, mortgageRate, mortgageTerm)
 
-  const monthlyData = useMemo(() => {
-    const mults = SEASONALITY[location]
-    return MONTHS.map((mo, i) => {
-      const adjRate     = nightlyRate * mults[i]
-      const daysBooked  = Math.round(30 * (occupancyPct / 100) * mults[i])
-      const grossRent   = adjRate * daysBooked
-      const cleaningRev = cleaningFee * daysBooked / cleaningsMonth * Math.max(1, cleaningsMonth * mults[i] / 12)
-      const platformCut = grossRent * (platformFee / 100)
-      const hostCut     = grossRent * (hostFee / 100)
-      const cleanCost   = cleaningFee * Math.max(1, cleaningsMonth * mults[i] / 12)
-      const mgmtCost    = (grossRent + cleaningRev) * (propMgmtPct / 100)
-      const propTax     = homeValue * annualTaxPct / 100 / 12
-      const ins         = annualInsurance / 12
-      const mortgage    = loanBalance > 0 ? loanBalance * (interestRate / 100 / 12) * (1 + interestRate / 100 / 12) ** (30 * 12) / ((1 + interestRate / 100 / 12) ** (30 * 12) - 1) : 0
-
-      const revenue     = grossRent + cleaningRev
-      const expenses    = platformCut + hostCut + cleanCost + mgmtCost + propTax + ins + monthlyUtil + suppliesMo
-      const netIncome   = revenue - expenses - mortgage
-
-      return {
-        mo,
-        adjRate:    Math.round(adjRate),
-        daysBooked,
-        revenue:    Math.round(revenue),
-        expenses:   Math.round(expenses),
-        netIncome:  Math.round(netIncome),
-        occupancy:  Math.round((occupancyPct / 100) * mults[i] * 100),
-      }
+    let strGrossRevenue = 0
+    const monthlyRevData = MONTH_NAMES.map((name, i) => {
+      const occ = useSeasonality ? months[i].occupancy : avgOccupancy
+      const adr = useSeasonality ? months[i].adr : avgADR
+      const nights = 30 * occ / 100
+      const revenue = nights * adr
+      const stays = nights / Math.max(1, avgStayNights)
+      const cleaning = stays * cleaningFeePerStay
+      strGrossRevenue += revenue
+      return { month: name, nights: Math.round(nights), revenue: Math.round(revenue), cleaning: Math.round(cleaning) }
     })
-  }, [nightlyRate, occupancyPct, cleaningFee, platformFee, hostFee, cleaningsMonth, propMgmtPct, location, annualTaxPct, annualInsurance, monthlyUtil, suppliesMo, loanBalance, interestRate, homeValue])
 
-  const annualRevenue   = monthlyData.reduce((s, m) => s + m.revenue, 0)
-  const annualExpenses  = monthlyData.reduce((s, m) => s + m.expenses, 0)
-  const annualNet       = monthlyData.reduce((s, m) => s + m.netIncome, 0)
-  const avgOccupancy    = Math.round(monthlyData.reduce((s, m) => s + m.occupancy, 0) / 12)
-  const ltrAnnual       = ltrMonthly * 12
-  const strAdvantage    = annualNet - ltrAnnual
+    const annualCleaningRevenue = monthlyRevData.reduce((s, m) => s + m.cleaning, 0)
+    const totalGrossRevenue = strGrossRevenue + annualCleaningRevenue
+    const platformFees = strGrossRevenue * platformFeePct / 100
+    const mgmtFees = totalGrossRevenue * propertyMgmtPct / 100
 
-  const downAmt  = homeValue - loanBalance
-  const capRate  = (annualNet / homeValue) * 100
-  const cashOnCash = downAmt > 0 ? (annualNet / downAmt) * 100 : 0
+    const annualSupplies = suppliesMo * 12
+    const annualUtilities = utilitiesMo * 12
+    const annualMaint = purchasePrice * annualMaintPct / 100
+    const annualHOA = hoa * 12
+    const annualMortgage = monthlyMortgage * 12
+    const operatingExpenses = annualSupplies + annualUtilities + insuranceAnnual + propertyTaxAnnual + annualMaint + annualHOA
 
-  if (!result) {
-    return (
-      <div className="text-center py-12 text-slate-500">
-        <p className="text-4xl mb-3">🏡</p>
-        <p>Run a valuation first to analyze short-term rental potential</p>
+    const strNOI = totalGrossRevenue - platformFees - mgmtFees - operatingExpenses
+    const strCashFlow = strNOI - annualMortgage
+    const strCashFlowMo = strCashFlow / 12
+    const strCoC = downPayment > 0 ? strCashFlow / downPayment * 100 : 0
+    const strCapRate = purchasePrice > 0 ? strNOI / purchasePrice * 100 : 0
+
+    const ltrGrossRent = longTermRent * 12
+    const ltrEffectiveRent = ltrGrossRent * (1 - longTermVacancyPct / 100)
+    const ltrMgmtFee = ltrEffectiveRent * longTermMgmtPct / 100
+    const ltrNOI = ltrEffectiveRent - ltrMgmtFee - insuranceAnnual - propertyTaxAnnual - annualMaint - annualHOA
+    const ltrCashFlow = ltrNOI - annualMortgage
+    const ltrCashFlowMo = ltrCashFlow / 12
+    const ltrCoC = downPayment > 0 ? ltrCashFlow / downPayment * 100 : 0
+    const ltrCapRate = purchasePrice > 0 ? ltrNOI / purchasePrice * 100 : 0
+
+    const strAdvantage = strCashFlow - ltrCashFlow
+    const revPAR = strGrossRevenue / 365
+    const avgNightsBooked = monthlyRevData.reduce((s, m) => s + m.nights, 0)
+
+    const radarData = [
+      { metric: 'Cash Flow', STR: Math.min(100, Math.max(0, (strCashFlowMo + 500) / 20)), LTR: Math.min(100, Math.max(0, (ltrCashFlowMo + 500) / 20)) },
+      { metric: 'Cap Rate', STR: Math.min(100, strCapRate * 10), LTR: Math.min(100, ltrCapRate * 10) },
+      { metric: 'Cash-on-Cash', STR: Math.min(100, Math.max(0, strCoC * 5)), LTR: Math.min(100, Math.max(0, ltrCoC * 5)) },
+      { metric: 'Stability', STR: 35, LTR: 85 },
+      { metric: 'Low Effort', STR: 20, LTR: 78 },
+      { metric: 'Rev Upside', STR: 90, LTR: 42 },
+    ]
+
+    const strExpenseBreakdown = [
+      { name: 'Mortgage', amount: Math.round(annualMortgage) },
+      { name: 'Platform Fees', amount: Math.round(platformFees) },
+      { name: 'Mgmt Fees', amount: Math.round(mgmtFees) },
+      { name: 'Utilities', amount: Math.round(annualUtilities) },
+      { name: 'Supplies', amount: Math.round(annualSupplies) },
+      { name: 'Maint/Tax/Ins', amount: Math.round(annualMaint + propertyTaxAnnual + insuranceAnnual) },
+    ]
+
+    return {
+      downPayment, loanAmount, monthlyMortgage,
+      strGrossRevenue, annualCleaningRevenue, totalGrossRevenue, platformFees, mgmtFees,
+      strNOI, strCashFlow, strCashFlowMo, strCoC, strCapRate,
+      ltrNOI, ltrCashFlow, ltrCashFlowMo, ltrCoC, ltrCapRate,
+      strAdvantage, revPAR, avgNightsBooked,
+      monthlyRevData, radarData, strExpenseBreakdown,
+    }
+  }, [inp, months])
+
+  const field = (label: string, key: keyof Inputs, suffix = '', prefix = '', step = 'any') => (
+    <div>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <div className="relative">
+        {prefix && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{prefix}</span>}
+        <input type="number" step={step} value={inp[key] as number} onChange={e => set(key, e.target.value)}
+          className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 ${prefix ? 'pl-5 pr-3' : suffix ? 'pl-3 pr-8' : 'px-3'}`} />
+        {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{suffix}</span>}
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-sm">
       <div>
-        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-1">Short-Term Rental (Airbnb/VRBO) Analyzer</h3>
-        <p className="text-xs text-slate-500">
-          Model STR income with seasonal occupancy curves, platform fees, and compare vs long-term rental.
-        </p>
+        <h2 className="text-lg font-bold text-white">Short-Term Rental (STR) Analyzer</h2>
+        <p className="text-slate-400 text-xs mt-1">Compare Airbnb/VRBO revenue vs long-term rental — ADR, occupancy, platform fees, seasonality, and true cash-on-cash</p>
       </div>
 
-      {/* Location & settings */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Property & Financing</p>
+          {field('Purchase Price', 'purchasePrice', '', '$', '1000')}
+          {field('Down Payment', 'downPaymentPct', '%')}
+          {field('Mortgage Rate', 'mortgageRate', '%')}
+          {field('Mortgage Term', 'mortgageTerm', 'yr', '', '1')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Down Payment</span><span className="text-white">{fmt(calc.downPayment)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Monthly Mortgage</span><span className="text-red-400 font-bold">{fmt(calc.monthlyMortgage)}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">STR Performance</p>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-400">Use Monthly Seasonality</span>
+            <button onClick={() => set('useSeasonality', !inp.useSeasonality)}
+              className={`w-11 h-6 rounded-full transition-colors ${inp.useSeasonality ? 'bg-green-500' : 'bg-slate-700'}`}>
+              <div className={`w-4 h-4 bg-white rounded-full mx-1 transition-transform ${inp.useSeasonality ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {!inp.useSeasonality && <>
+            {field('Avg Daily Rate (ADR)', 'avgADR', '', '$')}
+            {field('Annual Occupancy', 'avgOccupancy', '%')}
+          </>}
+          {field('Platform Fee (host)', 'platformFeePct', '%')}
+          {field('Cleaning Fee / Stay', 'cleaningFeePerStay', '', '$')}
+          {field('Avg Stay Length', 'avgStayNights', 'nights')}
+          {field('Property Mgmt Fee', 'propertyMgmtPct', '% of rev')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Nights Booked/yr</span><span className="text-slate-300">{calc.avgNightsBooked}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">RevPAR</span><span className="text-blue-400 font-bold">{fmt(calc.revPAR)}/night</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Gross STR Revenue</span><span className="text-green-400 font-bold">{fmt(calc.strGrossRevenue)}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Expenses & LTR</p>
+          {field('Supplies / month', 'suppliesMo', '', '$')}
+          {field('Utilities / month', 'utilitiesMo', '', '$')}
+          {field('Insurance (annual)', 'insuranceAnnual', '', '$')}
+          {field('Property Tax (annual)', 'propertyTaxAnnual', '', '$')}
+          {field('HOA / month', 'hoa', '', '$')}
+          {field('Maintenance / CapEx', 'annualMaintPct', '% of val')}
+          <hr className="border-slate-700" />
+          {field('Long-Term Rent/mo', 'longTermRent', '', '$')}
+          {field('LTR Vacancy', 'longTermVacancyPct', '%')}
+          {field('LTR Mgmt Fee', 'longTermMgmtPct', '%')}
+        </div>
+      </div>
+
+      {/* Seasonality Grid */}
+      {inp.useSeasonality && (
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Monthly Seasonality</p>
+          <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
+            {MONTH_NAMES.map((name, i) => (
+              <div key={name} className="text-center">
+                <p className="text-xs text-slate-500 mb-1">{name}</p>
+                <input type="number" value={months[i].occupancy} onChange={e => setMonth(i, 'occupancy', e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded text-xs text-center text-white py-1 mb-1 focus:outline-none focus:border-blue-500" />
+                <input type="number" value={months[i].adr} onChange={e => setMonth(i, 'adr', e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded text-xs text-center text-white py-1 focus:outline-none focus:border-blue-500" />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-2">Top = occupancy (%), bottom = ADR ($)</p>
+        </div>
+      )}
+
+      {/* Side-by-side comparison */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Revenue Settings</p>
-          <div>
-            <p className="text-xs text-slate-400 uppercase tracking-widest mb-2">Property Location Type</p>
-            <div className="grid grid-cols-5 gap-1">
-              {(Object.keys(SEASONALITY) as (keyof typeof SEASONALITY)[]).map(loc => (
-                <button key={loc}
-                  onClick={() => setLocation(loc)}
-                  className={`px-2 py-1.5 rounded-lg text-xs font-bold transition capitalize ${location === loc ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
-                  {loc}
-                </button>
-              ))}
+        {[
+          { label: 'Short-Term Rental (STR)', cashFlow: calc.strCashFlowMo, coc: calc.strCoC, capRate: calc.strCapRate, noi: calc.strNOI, accent: 'blue' },
+          { label: 'Long-Term Rental (LTR)', cashFlow: calc.ltrCashFlowMo, coc: calc.ltrCoC, capRate: calc.ltrCapRate, noi: calc.ltrNOI, accent: 'slate' },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl p-4 border ${s.accent === 'blue' ? 'bg-blue-900/15 border-blue-700/40' : 'bg-slate-800/50 border-slate-700'}`}>
+            <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${s.accent === 'blue' ? 'text-blue-300' : 'text-slate-300'}`}>{s.label}</p>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div>
+                <p className={`text-2xl font-black ${s.cashFlow > 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(s.cashFlow)}/mo</p>
+                <p className="text-xs text-slate-400">Monthly Cash Flow</p>
+              </div>
+              <div>
+                <p className={`text-2xl font-black ${s.coc > 8 ? 'text-green-400' : s.coc > 4 ? 'text-yellow-400' : 'text-red-400'}`}>{s.coc.toFixed(1)}%</p>
+                <p className="text-xs text-slate-400">Cash-on-Cash</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-purple-400">{s.capRate.toFixed(2)}%</p>
+                <p className="text-xs text-slate-400">Cap Rate</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white">{fmt(s.noi)}</p>
+                <p className="text-xs text-slate-400">Annual NOI</p>
+              </div>
             </div>
           </div>
-          {[
-            { label: 'Base Nightly Rate',   value: nightlyRate,    min: 30,  max: 1000, step: 5,   set: setNightlyRate,    fmt: (v: number) => `${fmt(v)}/night` },
-            { label: 'Base Occupancy',      value: occupancyPct,   min: 10,  max: 95,   step: 1,   set: setOccupancyPct,   fmt: (v: number) => `${v}%` },
-            { label: 'Cleaning Fee',        value: cleaningFee,    min: 20,  max: 400,  step: 10,  set: setCleaningFee,    fmt: (v: number) => fmt(v) },
-            { label: 'Cleanings per Month', value: cleaningsMonth, min: 1,   max: 20,   step: 1,   set: setCleaningsMonth, fmt: (v: number) => `${v}` },
-          ].map(s => (
-            <div key={s.label}>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                <span className="text-xs font-bold text-blue-400">{s.fmt(s.value)}</span>
-              </div>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                onChange={e => s.set(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-500" />
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Expenses</p>
-          {[
-            { label: 'Airbnb Platform Fee',  value: platformFee,    min: 0, max: 5,    step: 0.25, set: setPlatformFee,    fmt: (v: number) => `${v}%` },
-            { label: 'Host Service Fee',     value: hostFee,        min: 0, max: 5,    step: 0.25, set: setHostFee,        fmt: (v: number) => `${v}%` },
-            { label: 'Property Mgmt %',     value: propMgmtPct,    min: 0, max: 30,   step: 1,    set: setPropMgmtPct,   fmt: (v: number) => `${v}%${v === 0 ? ' (self-manage)' : ''}` },
-            { label: 'Monthly Utilities',    value: monthlyUtil,    min: 0, max: 1000, step: 25,   set: setMonthlyUtil,    fmt: fmt },
-            { label: 'Monthly Supplies',     value: suppliesMo,     min: 0, max: 500,  step: 25,   set: setSuppliesMo,     fmt: fmt },
-            { label: 'Property Tax Rate',    value: annualTaxPct,   min: 0.3, max: 3, step: 0.05,  set: setAnnualTaxPct,   fmt: (v: number) => `${v.toFixed(2)}%` },
-          ].map(s => (
-            <div key={s.label}>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                <span className="text-xs font-bold text-blue-400">{s.fmt(s.value)}</span>
-              </div>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                onChange={e => s.set(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-500" />
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* Annual summary */}
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-5 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-4">Annual STR Summary</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          {[
-            { label: 'Gross Revenue',  value: fmt(annualRevenue), color: 'text-green-400' },
-            { label: 'Total Expenses', value: fmt(annualExpenses), color: 'text-red-400' },
-            { label: 'Net Income',     value: fmt(annualNet), color: annualNet >= 0 ? 'text-green-400' : 'text-red-400' },
-            { label: 'Cap Rate',       value: `${capRate.toFixed(1)}%`, color: capRate >= 6 ? 'text-green-400' : capRate >= 4 ? 'text-blue-400' : 'text-yellow-400' },
-          ].map(s => (
-            <div key={s.label}>
-              <p className="text-xs text-slate-500 mb-1">{s.label}</p>
-              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* STR vs LTR */}
-        <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xs text-slate-500 mb-1">STR Net/yr</p>
-            <p className={`text-lg font-black ${annualNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(annualNet)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">LTR Net/yr (est.)</p>
-            <p className="text-lg font-black text-blue-400">{fmt(ltrAnnual)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">STR Advantage</p>
-            <p className={`text-lg font-black ${strAdvantage >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {strAdvantage >= 0 ? '+' : ''}{fmt(strAdvantage)}/yr
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Monthly chart */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Monthly Revenue vs Expenses</p>
-        <p className="text-xs text-slate-600 mb-4">
-          Seasonal pattern: <span className="capitalize">{location}</span>. Avg occupancy: {avgOccupancy}%.
-          {ltrMonthly > 0 && ` LTR: ${fmt(ltrMonthly)}/mo dashed line.`}
+      <div className={`rounded-xl p-4 border text-center ${calc.strAdvantage > 0 ? 'bg-green-900/15 border-green-700/40' : 'bg-orange-900/15 border-orange-700/40'}`}>
+        <p className={`text-3xl font-black ${calc.strAdvantage > 0 ? 'text-green-400' : 'text-orange-400'}`}>
+          {calc.strAdvantage > 0 ? '+' : ''}{fmt(calc.strAdvantage)}/yr
         </p>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={monthlyData.map(m => ({ ...m, name: m.mo }))} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false}
-              tickFormatter={v => `$${(v / 1000).toFixed(0)}K`} width={45} />
-            <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, color: '#e2e8f0' }}
-              formatter={(v: number, name: string) => [fmt(v), name]} />
-            <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" />
-            {ltrMonthly > 0 && (
-              <ReferenceLine y={ltrMonthly} stroke="#3b82f6" strokeDasharray="4 4"
-                label={{ value: 'LTR', fill: '#3b82f6', fontSize: 10, position: 'right' }} />
-            )}
-            <Bar dataKey="revenue" name="Gross Revenue" fill="#22c55e" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[3, 3, 0, 0]} />
+        <p className="text-xs text-slate-400 mt-1">STR {calc.strAdvantage > 0 ? 'outperforms' : 'underperforms'} LTR by {fmt(Math.abs(calc.strAdvantage))} annually</p>
+      </div>
+
+      {/* Charts */}
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Monthly STR Revenue (Room + Cleaning)</p>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={calc.monthlyRevData}>
+            <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 10 }} />
+            <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} />
+            <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="revenue" name="Room Revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} stackId="a" />
+            <Bar dataKey="cleaning" name="Cleaning Revenue" fill="#22c55e" radius={[0, 0, 0, 0]} stackId="a" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Net income by month */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-4">Net Cash Flow by Month</p>
-        <ResponsiveContainer width="100%" height={160}>
-          <BarChart data={monthlyData.map(m => ({ ...m, name: m.mo }))} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false}
-              tickFormatter={v => v >= 0 ? `$${(v / 1000).toFixed(0)}K` : `-$${(Math.abs(v) / 1000).toFixed(0)}K`} width={45} />
-            <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, color: '#e2e8f0' }}
-              formatter={(v: number) => [fmt(v), 'Net Cash Flow']} />
-            <ReferenceLine y={0} stroke="#64748b" strokeDasharray="3 3" />
-            <Bar dataKey="netIncome" name="Net Cash Flow" radius={[3, 3, 0, 0]}>
-              {monthlyData.map((d, i) => <Cell key={i} fill={d.netIncome >= 0 ? '#22c55e' : '#ef4444'} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">STR vs LTR Score Radar</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <RadarChart data={calc.radarData}>
+              <PolarGrid stroke="#334155" />
+              <PolarAngleAxis dataKey="metric" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <Radar name="STR" dataKey="STR" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.25} />
+              <Radar name="LTR" dataKey="LTR" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
 
-      {/* Monthly detail table */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-3 font-bold">Monthly Detail</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-slate-500 border-b border-slate-700">
-                <th className="text-left pb-2">Month</th>
-                <th className="text-right pb-2">Avg Rate</th>
-                <th className="text-right pb-2">Days Booked</th>
-                <th className="text-right pb-2">Occupancy</th>
-                <th className="text-right pb-2">Revenue</th>
-                <th className="text-right pb-2">Expenses</th>
-                <th className="text-right pb-2 text-slate-400">Net</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {monthlyData.map(m => (
-                <tr key={m.mo}>
-                  <td className="py-1.5 text-slate-400 font-semibold">{m.mo}</td>
-                  <td className="text-right py-1.5 text-slate-300">{fmt(m.adjRate)}</td>
-                  <td className="text-right py-1.5 text-slate-300">{m.daysBooked}</td>
-                  <td className="text-right py-1.5 text-slate-400">{m.occupancy}%</td>
-                  <td className="text-right py-1.5 text-green-400">{fmt(m.revenue)}</td>
-                  <td className="text-right py-1.5 text-red-400">{fmt(m.expenses)}</td>
-                  <td className={`text-right py-1.5 font-bold ${m.netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {m.netIncome >= 0 ? '+' : ''}{fmt(m.netIncome)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-t border-slate-600 font-bold">
-                <td className="py-2 text-slate-300">Annual</td>
-                <td className="text-right py-2 text-slate-300">—</td>
-                <td className="text-right py-2 text-slate-300">{monthlyData.reduce((s, m) => s + m.daysBooked, 0)}</td>
-                <td className="text-right py-2 text-slate-400">{avgOccupancy}%</td>
-                <td className="text-right py-2 text-green-400">{fmt(annualRevenue)}</td>
-                <td className="text-right py-2 text-red-400">{fmt(annualExpenses)}</td>
-                <td className={`text-right py-2 font-black ${annualNet >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(annualNet)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">STR Annual Cost Breakdown</p>
+          <div className="space-y-2.5">
+            {calc.strExpenseBreakdown.map(e => (
+              <div key={e.name}>
+                <div className="flex justify-between text-xs mb-0.5">
+                  <span className="text-slate-400">{e.name}</span>
+                  <span className="text-slate-300">{fmt(e.amount)}</span>
+                </div>
+                <div className="bg-slate-700 rounded-full h-1.5">
+                  <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${Math.min(100, e.amount / calc.totalGrossRevenue * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between text-xs font-bold border-t border-slate-700 pt-2 mt-2">
+              <span className="text-slate-300">Total Gross Revenue</span>
+              <span className="text-green-400">{fmt(calc.totalGrossRevenue)}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-4">
-        <p className="text-xs text-yellow-400 font-semibold mb-1">Important Considerations</p>
-        <ul className="space-y-1 text-xs text-slate-400">
-          <li>• Check local STR regulations — many cities require permits or limit nights per year</li>
-          <li>• HOAs may prohibit or restrict short-term rentals</li>
-          <li>• STR income is typically taxable; consult a tax professional about depreciation and Schedule E</li>
-          <li>• Airbnb/VRBO collect and remit occupancy taxes in most jurisdictions</li>
-          <li>• Short-term rental insurance is different from standard homeowner's insurance</li>
-        </ul>
+      <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">STR Key Considerations</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-400">
+          {[
+            '📋 Check local STR ordinances — many cities require permits, limit nights/year, or ban STRs entirely',
+            '💰 Platform fees: Airbnb host-only ~3%; VRBO ~5% + CC processing (~3%); always model gross then net',
+            '🏠 STR requires specialty insurance — standard homeowners policies exclude commercial hosting activity',
+            '📊 RevPAR = ADR × Occupancy — benchmark against AirDNA or Mashvisor data for your market',
+            '🧹 Cleaning fees are pass-through revenue but add friction — high fees hurt booking conversion rates',
+            '💼 Self-managing takes 5–10 hrs/week; professional STR managers charge 20–30% of revenue',
+            '⚠️ Augusta Rule (§280A): primary residence rented ≤14 days/yr → rental income tax-free, no deductions',
+            '🔄 STR depreciation: personal property items (furniture, appliances) qualify for 5-yr MACRS and bonus depr',
+          ].map((t, i) => <p key={i}>{t}</p>)}
+        </div>
       </div>
-
-      <p className="text-xs text-slate-600 text-center">
-        Revenue projections are estimates using seasonal multipliers. Actual occupancy depends heavily on reviews, listing quality, and local competition.
-      </p>
     </div>
   )
 }
