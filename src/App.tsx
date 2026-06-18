@@ -61,6 +61,7 @@ import PortfolioTracker from './components/PortfolioTracker'
 import OpportunityZone from './components/OpportunityZone'
 import HouseHack from './components/HouseHack'
 import ArmAnalyzer from './components/ArmAnalyzer'
+import RentalTaxCalc from './components/RentalTaxCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -123,6 +124,7 @@ const TABS = [
   { id: 'oppzone',      label: 'Opp Zone',        icon: '🏗' },
   { id: 'househack',    label: 'House Hack',      icon: '🔑' },
   { id: 'arm',          label: 'ARM Analyzer',    icon: '📉' },
+  { id: 'rentaltax',    label: 'Rental Tax',      icon: '🧾' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -273,6 +275,7 @@ export default function App() {
               {activeTab === 'oppzone'     && <OpportunityZone />}
               {activeTab === 'househack'   && <HouseHack />}
               {activeTab === 'arm'         && <ArmAnalyzer />}
+              {activeTab === 'rentaltax'   && <RentalTaxCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
