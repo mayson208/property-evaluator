@@ -10,6 +10,11 @@ const STATE_PPF: Record<string, number> = {
   CA: 520, NY: 480, WA: 420, MA: 410, CO: 380, TX: 195, FL: 265,
   IL: 195, AZ: 230, NV: 245, OR: 310, GA: 190, NC: 185, OH: 165,
   PA: 175, MI: 160, MN: 195, WI: 155, MO: 145, TN: 195, VA: 240,
+  SC: 185, AL: 148, KY: 148, IN: 155, UT: 280, ID: 250, MT: 255,
+  WY: 215, NM: 180, OK: 145, KS: 145, NE: 165, SD: 185, ND: 185,
+  IA: 148, AR: 135, LA: 148, MS: 130, WV: 120, ME: 265, NH: 295,
+  VT: 265, RI: 310, CT: 285, NJ: 360, DE: 245, MD: 295, HI: 650,
+  AK: 285, DC: 620,
 }
 
 function fmt(n: number) {
@@ -38,10 +43,23 @@ export default function MarketTrends() {
   const basePPF = STATE_PPF[input.state.toUpperCase()] ?? 200
   const data = useMemo(() => generateMarketData(input.state, basePPF), [input.state, basePPF])
 
-  const latest = data[data.length - 1]
-  const prev   = data[data.length - 13]  // year ago
-  const pctChange = ((latest.medianPrice - prev.medianPrice) / prev.medianPrice) * 100
-  const ppfChange = ((latest.pricePerSqft - prev.pricePerSqft) / prev.pricePerSqft) * 100
+  const latest  = data[data.length - 1]
+  const prev1yr = data[data.length - 13]  // year ago
+  const prev6mo = data[data.length - 7]   // 6 months ago
+  const prev3mo = data[data.length - 4]   // 3 months ago
+  const pctChange = ((latest.medianPrice - prev1yr.medianPrice) / prev1yr.medianPrice) * 100
+  const pct6mo    = ((latest.medianPrice - prev6mo.medianPrice) / prev6mo.medianPrice) * 100
+  const pct3mo    = ((latest.medianPrice - prev3mo.medianPrice) / prev3mo.medianPrice) * 100
+  const ppfChange = ((latest.pricePerSqft - prev1yr.pricePerSqft) / prev1yr.pricePerSqft) * 100
+
+  // Market condition score (lower inventory + lower DOM + higher appreciation = seller's market)
+  const marketScore = Math.round(
+    (latest.inventory < 3 ? 80 : latest.inventory < 6 ? 50 : 20) * 0.4 +
+    (latest.daysOnMarket < 20 ? 80 : latest.daysOnMarket < 35 ? 55 : 25) * 0.3 +
+    (pctChange > 5 ? 80 : pctChange > 0 ? 55 : 30) * 0.3
+  )
+  const marketLabel = marketScore >= 65 ? "Seller's Market" : marketScore >= 40 ? 'Balanced Market' : "Buyer's Market"
+  const marketColor = marketScore >= 65 ? 'text-green-400' : marketScore >= 40 ? 'text-yellow-400' : 'text-blue-400'
 
   return (
     <div className="space-y-6">
@@ -50,6 +68,28 @@ export default function MarketTrends() {
           {input.state || 'US'} Market — Last 24 Months
         </h3>
         <p className="text-xs text-slate-500">Simulated market data based on state averages</p>
+      </div>
+
+      {/* Market condition banner */}
+      <div className={`rounded-xl p-4 border flex items-center justify-between ${
+        marketScore >= 65 ? 'bg-green-900/20 border-green-700/50' :
+        marketScore >= 40 ? 'bg-yellow-900/20 border-yellow-700/50' :
+        'bg-blue-900/20 border-blue-700/50'
+      }`}>
+        <div>
+          <p className={`text-lg font-black ${marketColor}`}>{marketLabel}</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {marketScore >= 65
+              ? 'Low inventory and fast sales favor sellers — prices trending up'
+              : marketScore >= 40
+              ? 'Balanced conditions — neither buyers nor sellers have a clear advantage'
+              : 'High inventory and slower sales give buyers more negotiating power'}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-3xl font-black text-white">{marketScore}</p>
+          <p className="text-xs text-slate-500">Market Score</p>
+        </div>
       </div>
 
       {/* Stats row */}
@@ -69,7 +109,7 @@ export default function MarketTrends() {
         <StatCard
           label="Days on Market"
           value={`${latest.daysOnMarket}`}
-          sub="avg days to sell"
+          sub={latest.daysOnMarket < 20 ? 'Moving fast' : latest.daysOnMarket < 40 ? 'Normal pace' : 'Slower market'}
         />
         <StatCard
           label="Inventory"
@@ -77,6 +117,25 @@ export default function MarketTrends() {
           sub={latest.inventory < 3 ? "Seller's market" : latest.inventory < 6 ? 'Balanced' : "Buyer's market"}
           up={latest.inventory < 3 ? true : undefined}
         />
+      </div>
+
+      {/* Price momentum */}
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs text-slate-400 uppercase tracking-widest mb-3">Price Momentum</p>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: '3-Month', pct: pct3mo },
+            { label: '6-Month', pct: pct6mo },
+            { label: '12-Month', pct: pctChange },
+          ].map(m => (
+            <div key={m.label} className="text-center">
+              <p className="text-xs text-slate-500 mb-1">{m.label}</p>
+              <p className={`text-xl font-black ${m.pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {m.pct >= 0 ? '+' : ''}{m.pct.toFixed(1)}%
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Median price chart */}

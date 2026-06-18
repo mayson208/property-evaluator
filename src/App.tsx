@@ -15,6 +15,7 @@ import FlipCalc from './components/FlipCalc'
 import CostOfOwnership from './components/CostOfOwnership'
 import RentVsBuy from './components/RentVsBuy'
 import PropertyScorecard from './components/PropertyScorecard'
+import WhatIfAnalyzer from './components/WhatIfAnalyzer'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -31,6 +32,7 @@ const TABS = [
   { id: 'rentvsbuy',     label: 'Rent vs Buy',  icon: '⚖️' },
   { id: 'neighborhood',  label: 'Area',         icon: '📍' },
   { id: 'mortgage',      label: 'Mortgage',     icon: '🏦' },
+  { id: 'whatif',        label: 'What-If',      icon: '🔮' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -135,6 +137,7 @@ export default function App() {
               {activeTab === 'rentvsbuy'    && <RentVsBuy />}
               {activeTab === 'neighborhood' && <NeighborhoodScore />}
               {activeTab === 'mortgage'     && <MortgageCalc />}
+              {activeTab === 'whatif'       && <WhatIfAnalyzer />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
