@@ -1,308 +1,295 @@
 import { useState, useMemo } from 'react'
-import { usePropertyStore } from '../store/usePropertyStore'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, LineChart, Line, ReferenceLine } from 'recharts'
 
-function fmt(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+interface Inputs {
+  purchasePrice: number
+  purchaseClosingCosts: number
+  rehabCost: number
+  rehabMonths: number
+  carryingCostsPct: number
+  arv: number
+  refiLTV: number
+  refiRate: number
+  refiTerm: number
+  refiClosingCosts: number
+  monthlyRent: number
+  vacancyPct: number
+  propertyMgmtPct: number
+  maintenancePct: number
+  propertyTaxAnnual: number
+  insuranceAnnual: number
+  appreciationRate: number
+  holdYears: number
 }
+
+const DEF: Inputs = {
+  purchasePrice: 120000,
+  purchaseClosingCosts: 3500,
+  rehabCost: 45000,
+  rehabMonths: 4,
+  carryingCostsPct: 8,
+  arv: 220000,
+  refiLTV: 75,
+  refiRate: 7.0,
+  refiTerm: 30,
+  refiClosingCosts: 4500,
+  monthlyRent: 1750,
+  vacancyPct: 8,
+  propertyMgmtPct: 10,
+  maintenancePct: 8,
+  propertyTaxAnnual: 2400,
+  insuranceAnnual: 1200,
+  appreciationRate: 3,
+  holdYears: 10,
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const N = (v: string) => parseFloat(v) || 0
 
 function monthlyPmt(principal: number, annualRate: number, termYears: number) {
+  if (annualRate === 0) return principal / (termYears * 12)
   const r = annualRate / 100 / 12
   const n = termYears * 12
-  if (r === 0) return principal / n
-  return principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+  return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1)
 }
 
-export default function BrrrrCalc() {
-  const { result, monthlyRent: storeRent, interestRate } = usePropertyStore()
+export default function BRRRRCalc() {
+  const [inp, setInp] = useState<Inputs>(DEF)
+  const set = (k: keyof Inputs, v: string) => setInp(p => ({ ...p, [k]: N(v) }))
 
-  const arv = result?.estimatedValue ?? 350000
+  const calc = useMemo(() => {
+    const {
+      purchasePrice, purchaseClosingCosts, rehabCost, rehabMonths, carryingCostsPct,
+      arv, refiLTV, refiRate, refiTerm, refiClosingCosts,
+      monthlyRent, vacancyPct, propertyMgmtPct, maintenancePct,
+      propertyTaxAnnual, insuranceAnnual, appreciationRate, holdYears,
+    } = inp
 
-  // STEP 1: Buy
-  const [purchasePrice, setPurchasePrice] = useState(Math.round(arv * 0.65))
-  const [closingCostsBuy, setClosingCostsBuy] = useState(3000)
-  const [hardMoneyRate, setHardMoneyRate] = useState(10.0)
-  const [hardMoneyPoints, setHardMoneyPoints] = useState(2)
-  const [hardMoneyPercent, setHardMoneyPercent] = useState(75)
+    const carryingCosts = (purchasePrice + rehabCost) * carryingCostsPct / 100 * (rehabMonths / 12)
+    const allInCost = purchasePrice + purchaseClosingCosts + rehabCost + carryingCosts
+    const equity = arv - allInCost
+    const equityPct = arv > 0 ? equity / arv * 100 : 0
 
-  // STEP 2: Rehab
-  const [rehabCost, setRehabCost] = useState(Math.round(arv * 0.12))
-  const [holdMonths, setHoldMonths] = useState(5)
-  const [monthlyHoldCost, setMonthlyHoldCost] = useState(800)
+    const refiLoanAmt = arv * refiLTV / 100
+    const cashOut = refiLoanAmt - allInCost - refiClosingCosts
+    const cashLeftInDeal = Math.max(0, allInCost + refiClosingCosts - refiLoanAmt)
+    const isInfiniteReturn = cashLeftInDeal <= 0
 
-  // STEP 3: Rent
-  const [monthlyRent, setMonthlyRent] = useState(storeRent > 0 ? storeRent : Math.round(arv * 0.007))
-  const [vacancyPct, setVacancyPct] = useState(8)
-  const [expensesPct, setExpensesPct] = useState(35)
+    const grossAnnualRent = monthlyRent * 12
+    const vacancyLoss = grossAnnualRent * vacancyPct / 100
+    const effectiveRent = grossAnnualRent - vacancyLoss
+    const mgmtFee = effectiveRent * propertyMgmtPct / 100
+    const maintenance = effectiveRent * maintenancePct / 100
+    const totalExpenses = mgmtFee + maintenance + propertyTaxAnnual + insuranceAnnual
+    const noi = effectiveRent - totalExpenses
 
-  // STEP 4: Refinance
-  const [refinanceRate, setRefinanceRate] = useState(interestRate)
-  const [refinanceLtv, setRefinanceLtv] = useState(75)
-  const [refinanceTerm, setRefinanceTerm] = useState(30)
-  const [refinanceClosing, setRefinanceClosing] = useState(4000)
+    const refiPayment = monthlyPmt(refiLoanAmt, refiRate, refiTerm)
+    const annualDebtService = refiPayment * 12
+    const annualCashFlow = noi - annualDebtService
+    const monthlyCashFlow = annualCashFlow / 12
+    const cashOnCash = cashLeftInDeal > 0 ? annualCashFlow / cashLeftInDeal * 100 : Infinity
+    const dscr = annualDebtService > 0 ? noi / annualDebtService : 0
+    const capRate = arv > 0 ? noi / arv * 100 : 0
 
-  const analysis = useMemo(() => {
-    // Total into deal before refi
-    const hardMoneyLoan    = purchasePrice * hardMoneyPercent / 100
-    const hardMoneyOrigin  = hardMoneyLoan * hardMoneyPoints / 100
-    const holdInterest     = hardMoneyLoan * (hardMoneyRate / 100 / 12) * holdMonths
-    const holdingCosts     = monthlyHoldCost * holdMonths
-    const totalCashIn      = (purchasePrice - hardMoneyLoan) + closingCostsBuy + rehabCost + hardMoneyOrigin + holdInterest + holdingCosts
+    const yearlyData = Array.from({ length: holdYears }, (_, i) => {
+      const y = i + 1
+      const propValue = arv * Math.pow(1 + appreciationRate / 100, y)
+      const r = refiRate / 100 / 12
+      const n = refiTerm * 12
+      const paidMonths = y * 12
+      const remainingLoan = paidMonths >= n ? 0 : refiLoanAmt * (Math.pow(1 + r, n) - Math.pow(1 + r, paidMonths)) / (Math.pow(1 + r, n) - 1)
+      const propEquity = propValue - remainingLoan
+      const cumCashFlow = annualCashFlow * y
+      return {
+        year: `Yr ${y}`,
+        propValue: Math.round(propValue),
+        propEquity: Math.round(propEquity),
+        cumCashFlow: Math.round(cumCashFlow),
+      }
+    })
 
-    // After Repair Value and refi
-    const refinanceLoan    = arv * refinanceLtv / 100
-    const refinancePmt     = monthlyPmt(refinanceLoan, refinanceRate, refinanceTerm)
-    const cashOutAtRefi    = refinanceLoan - refinanceClosing - hardMoneyLoan
+    const phaseData = [
+      { phase: 'Purchase', amount: purchasePrice + purchaseClosingCosts },
+      { phase: 'Rehab', amount: rehabCost },
+      { phase: 'Carrying', amount: Math.round(carryingCosts) },
+      { phase: 'Refi Close', amount: refiClosingCosts },
+    ]
 
-    // Money left in deal
-    const cashLeftInDeal   = totalCashIn - cashOutAtRefi
-
-    // Cash recouped
-    const cashRecouped     = Math.max(0, cashOutAtRefi - (totalCashIn - (purchasePrice - hardMoneyLoan) - closingCostsBuy))
-    const percentRecouped  = totalCashIn > 0 ? (cashOutAtRefi / totalCashIn) * 100 : 0
-
-    // Cash-on-cash after refi
-    const effectiveRent    = monthlyRent * (1 - vacancyPct / 100)
-    const expenses         = effectiveRent * expensesPct / 100
-    const noi              = effectiveRent - expenses
-    const cashFlow         = noi - refinancePmt
-    const annualCashFlow   = cashFlow * 12
-    const cocReturn        = cashLeftInDeal > 0 ? (annualCashFlow / cashLeftInDeal) * 100 : Infinity
-
-    // Deal quality
-    const isHomeRun        = percentRecouped >= 100
-    const equity           = arv - refinanceLoan
+    const scoreFactors = [
+      Math.min(30, equityPct > 20 ? 30 : equityPct > 10 ? 20 : 10),
+      Math.min(20, isInfiniteReturn ? 20 : cashLeftInDeal < 10000 ? 15 : cashLeftInDeal < 25000 ? 10 : 5),
+      Math.min(20, monthlyCashFlow > 400 ? 20 : monthlyCashFlow > 200 ? 14 : monthlyCashFlow > 0 ? 8 : 0),
+      Math.min(15, dscr > 1.4 ? 15 : dscr > 1.2 ? 10 : dscr > 1.0 ? 6 : 0),
+      Math.min(15, arv / allInCost > 1.3 ? 15 : arv / allInCost > 1.2 ? 10 : arv / allInCost > 1.1 ? 5 : 0),
+    ]
+    const brrrrScore = scoreFactors.reduce((a, b) => a + b, 0)
 
     return {
-      hardMoneyLoan, hardMoneyOrigin, holdInterest, holdingCosts, totalCashIn,
-      refinanceLoan, refinancePmt, cashOutAtRefi, cashLeftInDeal,
-      percentRecouped, cashRecouped,
-      effectiveRent, expenses, noi, cashFlow, annualCashFlow, cocReturn,
-      isHomeRun, equity,
+      carryingCosts, allInCost, equity, equityPct, refiLoanAmt, cashOut, cashLeftInDeal,
+      isInfiniteReturn, effectiveRent, totalExpenses, noi, refiPayment, annualDebtService,
+      annualCashFlow, monthlyCashFlow, cashOnCash, dscr, capRate,
+      yearlyData, brrrrScore, phaseData,
     }
-  }, [purchasePrice, closingCostsBuy, hardMoneyRate, hardMoneyPoints, hardMoneyPercent, rehabCost, holdMonths, monthlyHoldCost, monthlyRent, vacancyPct, expensesPct, refinanceRate, refinanceLtv, refinanceTerm, refinanceClosing, arv])
+  }, [inp])
 
-  const flowData = [
-    { label: 'Purchase',      value: -(purchasePrice + closingCostsBuy), color: '#ef4444' },
-    { label: 'Rehab',         value: -rehabCost, color: '#f59e0b' },
-    { label: 'Hold Costs',    value: -(analysis.holdInterest + analysis.holdingCosts + analysis.hardMoneyOrigin), color: '#f97316' },
-    { label: 'Refi Proceeds', value: analysis.cashOutAtRefi, color: '#22c55e' },
-    { label: 'Net Left In',   value: -analysis.cashLeftInDeal, color: analysis.cashLeftInDeal <= 0 ? '#22c55e' : '#3b82f6' },
-  ]
+  const scoreColor = calc.brrrrScore >= 70 ? 'text-green-400' : calc.brrrrScore >= 50 ? 'text-yellow-400' : 'text-red-400'
 
-  if (!result) {
-    return (
-      <div className="text-center py-12 text-slate-500">
-        <p className="text-4xl mb-3">🔄</p>
-        <p>Run a valuation first to analyze a BRRRR deal</p>
+  const field = (label: string, key: keyof Inputs, suffix = '', prefix = '', step = 'any') => (
+    <div>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <div className="relative">
+        {prefix && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{prefix}</span>}
+        <input type="number" step={step} value={inp[key] as number} onChange={e => set(key, e.target.value)}
+          className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 ${prefix ? 'pl-5 pr-3' : suffix ? 'pl-3 pr-8' : 'px-3'}`} />
+        {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{suffix}</span>}
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-1">BRRRR Strategy Calculator</h3>
-        <p className="text-xs text-slate-500">
-          <span className="font-bold text-white">B</span>uy ·{' '}
-          <span className="font-bold text-white">R</span>ehab ·{' '}
-          <span className="font-bold text-white">R</span>ent ·{' '}
-          <span className="font-bold text-white">R</span>efinance ·{' '}
-          <span className="font-bold text-white">R</span>epeat.
-          Model the entire cycle and see how much capital you recoup.
-        </p>
+    <div className="space-y-6 text-sm">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-white">BRRRR Strategy Calculator</h2>
+          <p className="text-slate-400 text-xs mt-1">Buy · Rehab · Rent · Refinance · Repeat — check if you can pull capital out to redeploy into the next deal</p>
+        </div>
+        <div className="text-center ml-4">
+          <p className={`text-4xl font-black ${scoreColor}`}>{calc.brrrrScore}</p>
+          <p className="text-xs text-slate-500">BRRRR Score /100</p>
+        </div>
       </div>
 
-      {/* ARV Banner */}
-      <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 flex items-center justify-between">
-        <span className="text-xs text-slate-400 uppercase tracking-widest">After Repair Value (from valuation)</span>
-        <span className="text-xl font-black text-white">{fmt(arv)}</span>
+      <div className="flex gap-2 text-xs overflow-x-auto pb-1">
+        {['🏚 Buy', '🔨 Rehab', '🏠 Rent', '🏦 Refinance', '🔁 Repeat'].map((s, i) => (
+          <div key={i} className="flex-shrink-0 text-center bg-slate-800/50 border border-slate-700 rounded-lg py-2 px-3">
+            <p className="font-bold text-slate-200">{s}</p>
+          </div>
+        ))}
       </div>
 
-      {/* 5 step inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Buy */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-          <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">① Buy</p>
-          {[
-            { label: 'Purchase Price',     value: purchasePrice,      min: 20000, max: arv,    step: 1000,  set: setPurchasePrice,      fmt: fmt },
-            { label: 'Closing Costs',      value: closingCostsBuy,    min: 0,     max: 20000,  step: 250,   set: setClosingCostsBuy,    fmt: fmt },
-            { label: 'Hard Money %',       value: hardMoneyPercent,   min: 50,    max: 100,    step: 5,     set: setHardMoneyPercent,   fmt: (v: number) => `${v}% of purchase` },
-            { label: 'Hard Money Rate',    value: hardMoneyRate,      min: 6,     max: 18,     step: 0.25,  set: setHardMoneyRate,      fmt: (v: number) => `${v.toFixed(2)}%` },
-            { label: 'Hard Money Points',  value: hardMoneyPoints,    min: 0,     max: 5,      step: 0.5,   set: setHardMoneyPoints,    fmt: (v: number) => `${v} pts` },
-          ].map(s => (
-            <div key={s.label}>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                <span className="text-xs font-bold text-blue-400">{s.fmt(s.value)}</span>
-              </div>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                onChange={e => s.set(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-500" />
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Buy & Rehab</p>
+          {field('Purchase Price', 'purchasePrice', '', '$', '1000')}
+          {field('Purchase Closing Costs', 'purchaseClosingCosts', '', '$')}
+          {field('Rehab Budget', 'rehabCost', '', '$', '500')}
+          {field('Rehab Duration', 'rehabMonths', 'mo', '', '1')}
+          {field('Carrying Cost Rate (annualized)', 'carryingCostsPct', '%')}
+          {field('After Repair Value (ARV)', 'arv', '', '$', '1000')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Carrying Costs</span><span className="text-slate-300">{fmt(calc.carryingCosts)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">All-In Cost</span><span className="text-white font-bold">{fmt(calc.allInCost)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Built-In Equity</span><span className={calc.equity > 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>{fmt(calc.equity)} ({calc.equityPct.toFixed(1)}%)</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">ARV / All-In</span><span className="text-blue-400 font-semibold">{(inp.arv / calc.allInCost).toFixed(2)}x</span></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Refinance</p>
+          {field('Refi LTV', 'refiLTV', '%')}
+          {field('Refi Interest Rate', 'refiRate', '%')}
+          {field('Refi Term', 'refiTerm', 'yr', '', '1')}
+          {field('Refi Closing Costs', 'refiClosingCosts', '', '$')}
+          <div className={`p-3 rounded-lg text-xs space-y-1.5 border ${calc.cashLeftInDeal === 0 ? 'border-green-700/50 bg-green-900/10' : 'border-slate-700 bg-slate-900/50'}`}>
+            <div className="flex justify-between"><span className="text-slate-400">Refi Loan Amount</span><span className="text-white font-bold">{fmt(calc.refiLoanAmt)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Cash Pulled Out</span><span className={calc.cashOut > 0 ? 'text-green-400 font-bold' : 'text-orange-400'}>
+              {calc.cashOut > 0 ? fmt(calc.cashOut) : '—'}
+            </span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Cash Left in Deal</span>
+              <span className={calc.isInfiniteReturn ? 'text-green-400 font-bold' : 'text-blue-400 font-bold'}>
+                {calc.isInfiniteReturn ? '🎯 $0 — Infinite return!' : fmt(calc.cashLeftInDeal)}
+              </span>
             </div>
-          ))}
-          <div className="bg-slate-900/60 rounded-lg p-2 text-xs flex justify-between">
-            <span className="text-slate-500">Your down payment</span>
-            <span className="font-bold text-white">{fmt(purchasePrice * (1 - hardMoneyPercent / 100))}</span>
+            <div className="flex justify-between"><span className="text-slate-400">Monthly Payment</span><span className="text-white">{fmt(calc.refiPayment)}</span></div>
           </div>
+          {field('Hold Period', 'holdYears', 'yr', '', '1')}
+          {field('Annual Appreciation', 'appreciationRate', '%')}
         </div>
 
-        {/* Rehab + Rent */}
-        <div className="space-y-4">
-          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-            <p className="text-xs text-yellow-400 uppercase tracking-widest font-bold">② Rehab</p>
-            {[
-              { label: 'Rehab Budget',     value: rehabCost,        min: 0,     max: arv * 0.5, step: 1000, set: setRehabCost,       fmt: fmt },
-              { label: 'Hold Period',      value: holdMonths,       min: 1,     max: 18,        step: 1,    set: setHoldMonths,      fmt: (v: number) => `${v} months` },
-              { label: 'Monthly Hold Cost', value: monthlyHoldCost, min: 0,     max: 3000,      step: 50,   set: setMonthlyHoldCost, fmt: fmt },
-            ].map(s => (
-              <div key={s.label}>
-                <div className="flex justify-between mb-1">
-                  <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                  <span className="text-xs font-bold text-yellow-400">{s.fmt(s.value)}</span>
-                </div>
-                <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                  onChange={e => s.set(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-yellow-400" />
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-            <p className="text-xs text-green-400 uppercase tracking-widest font-bold">③ Rent</p>
-            {[
-              { label: 'Monthly Rent',   value: monthlyRent,  min: 300,  max: 8000, step: 50, set: setMonthlyRent,  fmt: (v: number) => `${fmt(v)}/mo` },
-              { label: 'Vacancy',        value: vacancyPct,   min: 0,    max: 25,   step: 1,  set: setVacancyPct,   fmt: (v: number) => `${v}%` },
-              { label: 'Expense Ratio',  value: expensesPct,  min: 20,   max: 60,   step: 5,  set: setExpensesPct,  fmt: (v: number) => `${v}% (incl. maintenance, mgmt, tax, ins)` },
-            ].map(s => (
-              <div key={s.label}>
-                <div className="flex justify-between mb-1">
-                  <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                  <span className="text-xs font-bold text-green-400">{s.fmt(s.value)}</span>
-                </div>
-                <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                  onChange={e => s.set(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-green-500" />
-              </div>
-            ))}
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Rental Operations</p>
+          {field('Monthly Rent', 'monthlyRent', '', '$')}
+          {field('Vacancy Rate', 'vacancyPct', '%')}
+          {field('Property Mgmt', 'propertyMgmtPct', '% of rent')}
+          {field('Maintenance Reserve', 'maintenancePct', '% of rent')}
+          {field('Property Tax (annual)', 'propertyTaxAnnual', '', '$')}
+          {field('Insurance (annual)', 'insuranceAnnual', '', '$')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Effective Rent/yr</span><span className="text-slate-300">{fmt(calc.effectiveRent)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Total Expenses/yr</span><span className="text-red-400">{fmt(calc.totalExpenses)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">NOI/yr</span><span className="text-blue-400 font-bold">{fmt(calc.noi)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Debt Service/yr</span><span className="text-slate-300">{fmt(calc.annualDebtService)}</span></div>
           </div>
         </div>
       </div>
 
-      {/* Refinance */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-        <p className="text-xs text-purple-400 uppercase tracking-widest font-bold">④ Refinance</p>
-        <div className="grid grid-cols-2 gap-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Monthly Cash Flow', value: fmt(calc.monthlyCashFlow), color: calc.monthlyCashFlow > 0 ? 'text-green-400' : 'text-red-400', sub: `${fmt(calc.annualCashFlow)}/yr` },
+          { label: 'Cash-on-Cash Return', value: calc.isInfiniteReturn ? '∞' : `${calc.cashOnCash.toFixed(1)}%`, color: calc.cashOnCash > 10 || calc.isInfiniteReturn ? 'text-green-400' : calc.cashOnCash > 6 ? 'text-yellow-400' : 'text-red-400', sub: calc.isInfiniteReturn ? '$0 left in deal' : `On ${fmt(calc.cashLeftInDeal)} invested` },
+          { label: 'DSCR', value: calc.dscr.toFixed(2), color: calc.dscr >= 1.25 ? 'text-green-400' : calc.dscr >= 1.0 ? 'text-yellow-400' : 'text-red-400', sub: 'Lender min: 1.20–1.25' },
+          { label: 'Cap Rate', value: `${calc.capRate.toFixed(2)}%`, color: 'text-blue-400', sub: `NOI on ARV` },
+        ].map(m => (
+          <div key={m.label} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 text-center">
+            <p className={`text-2xl font-black ${m.color}`}>{m.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{m.label}</p>
+            <p className="text-xs text-slate-500">{m.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">All-In Cost Breakdown</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={calc.phaseData} layout="vertical">
+              <XAxis type="number" tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <YAxis dataKey="phase" type="category" width={70} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+              <Bar dataKey="amount" fill="#3b82f6" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Equity & Cash Flow Growth ({inp.holdYears} Yrs)</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={calc.yearlyData}>
+              <XAxis dataKey="year" tick={{ fill: '#64748b', fontSize: 10 }} />
+              <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="propEquity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Property Equity" />
+              <Line type="monotone" dataKey="cumCashFlow" stroke="#22c55e" strokeWidth={2} dot={false} name="Cum. Cash Flow" />
+              <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 2" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* BRRRR Checklist */}
+      <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">BRRRR Deal Checklist</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           {[
-            { label: 'Refi Rate',       value: refinanceRate,    min: 3,   max: 12,     step: 0.125, set: setRefinanceRate,    fmt: (v: number) => `${v.toFixed(3)}%` },
-            { label: 'Refi LTV',        value: refinanceLtv,     min: 65,  max: 80,     step: 1,     set: setRefinanceLtv,     fmt: (v: number) => `${v}% (${fmt(arv * v / 100)} loan)` },
-            { label: 'Refi Term',       value: refinanceTerm,    min: 15,  max: 30,     step: 5,     set: setRefinanceTerm,    fmt: (v: number) => `${v}yr` },
-            { label: 'Refi Closing',    value: refinanceClosing, min: 0,   max: 15000,  step: 250,   set: setRefinanceClosing, fmt: fmt },
-          ].map(s => (
-            <div key={s.label}>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                <span className="text-xs font-bold text-purple-400">{s.fmt(s.value)}</span>
-              </div>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                onChange={e => s.set(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-purple-500" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Results */}
-      <div className={`rounded-xl p-5 border ${analysis.isHomeRun ? 'bg-green-900/20 border-green-700/40' : 'bg-slate-800/50 border-slate-700'}`}>
-        <div className="flex items-center gap-2 mb-4">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">BRRRR Results</p>
-          {analysis.isHomeRun && <span className="text-xs bg-green-700/50 text-green-300 px-2 py-0.5 rounded-full font-bold">🏆 Home Run Deal</span>}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          {[
-            { label: 'Total Cash In',    value: fmt(analysis.totalCashIn),       sub: 'before refi',     color: 'text-red-400' },
-            { label: 'Cash Recouped',    value: fmt(analysis.cashOutAtRefi),      sub: 'from refi',       color: 'text-green-400' },
-            { label: '% Recouped',       value: `${analysis.percentRecouped.toFixed(0)}%`, sub: analysis.isHomeRun ? 'ALL cash back!' : 'of total invested', color: analysis.percentRecouped >= 100 ? 'text-green-400' : analysis.percentRecouped >= 75 ? 'text-yellow-400' : 'text-blue-400' },
-            { label: 'Left in Deal',     value: analysis.cashLeftInDeal <= 0 ? 'Nothing!' : fmt(analysis.cashLeftInDeal), sub: analysis.cashLeftInDeal <= 0 ? 'infinite CoC!' : 'remaining', color: analysis.cashLeftInDeal <= 0 ? 'text-green-400' : 'text-slate-300' },
-          ].map(s => (
-            <div key={s.label}>
-              <p className="text-xs text-slate-500 mb-1">{s.label}</p>
-              <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-slate-600 mt-0.5">{s.sub}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Monthly Cash Flow</p>
-            <p className={`text-lg font-black ${analysis.cashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(analysis.cashFlow)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Cash-on-Cash Return</p>
-            <p className={`text-lg font-black ${analysis.cashLeftInDeal <= 0 ? 'text-green-400' : analysis.cocReturn >= 12 ? 'text-green-400' : analysis.cocReturn >= 6 ? 'text-blue-400' : 'text-yellow-400'}`}>
-              {analysis.cashLeftInDeal <= 0 ? '∞' : `${analysis.cocReturn.toFixed(1)}%`}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Equity Built</p>
-            <p className="text-lg font-black text-green-400">{fmt(analysis.equity)}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Cost waterfall */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-4">Deal Flow — Cash In / Cash Out</p>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={flowData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 10 }} tickLine={false} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false}
-              tickFormatter={v => v >= 0 ? `$${(v / 1000).toFixed(0)}K` : `-$${(Math.abs(v) / 1000).toFixed(0)}K`} width={55} />
-            <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, color: '#e2e8f0' }}
-              formatter={(v: number) => [fmt(Math.abs(v)), v < 0 ? 'Cash Out' : 'Cash In']} />
-            <ReferenceLine y={0} stroke="#64748b" strokeDasharray="3 3" />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-              {flowData.map((d, i) => <Cell key={i} fill={d.color} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Detailed P&L */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-3 font-bold">Full Deal Breakdown</p>
-        <div className="space-y-1.5 text-xs">
-          {[
-            { label: 'Purchase price',         value: fmt(purchasePrice),               color: 'text-red-400' },
-            { label: 'Closing costs (buy)',     value: fmt(closingCostsBuy),             color: 'text-red-400' },
-            { label: 'Hard money down',         value: fmt(purchasePrice * (1 - hardMoneyPercent / 100)), color: 'text-red-400' },
-            { label: 'Hard money origination',  value: fmt(analysis.hardMoneyOrigin),    color: 'text-red-400' },
-            { label: 'Hard money interest',     value: fmt(analysis.holdInterest),       color: 'text-red-400' },
-            { label: 'Rehab budget',            value: fmt(rehabCost),                   color: 'text-red-400' },
-            { label: 'Hold costs',              value: fmt(analysis.holdingCosts),       color: 'text-red-400' },
-            { label: 'Total cash invested',     value: fmt(analysis.totalCashIn),        color: 'text-white font-black', border: true },
-            { label: 'Refi loan proceeds',      value: `+${fmt(analysis.refinanceLoan)}`, color: 'text-green-400' },
-            { label: 'Refi closing costs',      value: `-${fmt(refinanceClosing)}`,      color: 'text-red-400' },
-            { label: 'Hard money repaid',       value: `-${fmt(analysis.hardMoneyLoan)}`, color: 'text-red-400' },
-            { label: 'Net cash from refi',      value: fmt(analysis.cashOutAtRefi),      color: 'text-green-400 font-bold', border: true },
-            { label: 'Cash left in deal',       value: fmt(Math.max(0, analysis.cashLeftInDeal)), color: analysis.cashLeftInDeal <= 0 ? 'text-green-400 font-black' : 'text-blue-400 font-black', border: true },
-          ].map(r => (
-            <div key={r.label} className={`flex justify-between ${r.border ? 'border-t border-slate-700 pt-1.5 mt-1.5' : ''}`}>
-              <span className={r.border ? 'text-slate-300 font-semibold' : 'text-slate-500'}>{r.label}</span>
-              <span className={r.color}>{r.value}</span>
+            { check: inp.arv / calc.allInCost >= 1.25, label: `ARV / All-In ≥ 1.25x (yours: ${(inp.arv / calc.allInCost).toFixed(2)}x)` },
+            { check: calc.cashLeftInDeal <= inp.purchasePrice * 0.2, label: `Cash left ≤ 20% of purchase (yours: ${fmt(calc.cashLeftInDeal)})` },
+            { check: calc.monthlyCashFlow > 200, label: `Cash flow > $200/mo (yours: ${fmt(calc.monthlyCashFlow)}/mo)` },
+            { check: calc.dscr >= 1.2, label: `DSCR ≥ 1.20 (yours: ${calc.dscr.toFixed(2)})` },
+            { check: calc.equityPct >= 20, label: `20%+ equity in ARV (yours: ${calc.equityPct.toFixed(1)}%)` },
+            { check: inp.rehabMonths <= 6, label: `Rehab ≤ 6 months (yours: ${inp.rehabMonths} mo)` },
+            { check: calc.capRate >= 5, label: `Cap rate ≥ 5% (yours: ${calc.capRate.toFixed(2)}%)` },
+            { check: calc.isInfiniteReturn || calc.cashOnCash >= 8, label: `CoC ≥ 8% (yours: ${calc.isInfiniteReturn ? '∞' : calc.cashOnCash.toFixed(1) + '%'})` },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className={item.check ? 'text-green-400' : 'text-red-400'}>{item.check ? '✓' : '✗'}</span>
+              <span className={item.check ? 'text-slate-300' : 'text-slate-500'}>{item.label}</span>
             </div>
           ))}
         </div>
       </div>
-
-      <p className="text-xs text-slate-600 text-center">
-        BRRRR requires finding below-market deals. Target all-in cost ≤ 75% of ARV.
-        Home Run deal = pulling out 100% or more of invested capital via refinance (infinite cash-on-cash return).
-        Hard money rates and terms vary significantly by lender and market.
-      </p>
     </div>
   )
 }
