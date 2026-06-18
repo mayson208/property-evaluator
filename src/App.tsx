@@ -90,6 +90,7 @@ import FixedVsARM from './components/FixedVsARM'
 import RealEstateSyndication from './components/RealEstateSyndication'
 import HoldVsSell from './components/HoldVsSell'
 import MobileHomePark from './components/MobileHomePark'
+import SellerFinancing from './components/SellerFinancing'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -181,6 +182,7 @@ const TABS = [
   { id: 'syndication',   label: 'Syndication',  icon: '🤝' },
   { id: 'holdvssell',    label: 'Hold vs Sell', icon: '⚖️' },
   { id: 'mhp',           label: 'Mobile Home Park', icon: '🏘' },
+  { id: 'sellerfinance', label: 'Seller Finance', icon: '📝' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -360,6 +362,7 @@ export default function App() {
               {activeTab === 'syndication'  && <RealEstateSyndication />}
               {activeTab === 'holdvssell'   && <HoldVsSell />}
               {activeTab === 'mhp'          && <MobileHomePark />}
+              {activeTab === 'sellerfinance' && <SellerFinancing />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
