@@ -54,6 +54,7 @@ import NewConstruction from './components/NewConstruction'
 import InspectionCosts from './components/InspectionCosts'
 import VacantLand from './components/VacantLand'
 import MoveUpBuyer from './components/MoveUpBuyer'
+import ConvertToRental from './components/ConvertToRental'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -109,6 +110,7 @@ const TABS = [
   { id: 'inspection',  label: 'Inspection',    icon: '🔍' },
   { id: 'vacantland',  label: 'Vacant Land',   icon: '🌿' },
   { id: 'moveup',      label: 'Move-Up',       icon: '⬆️' },
+  { id: 'convertrent', label: 'Convert to Rental', icon: '🔄' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -252,6 +254,7 @@ export default function App() {
               {activeTab === 'inspection'  && <InspectionCosts />}
               {activeTab === 'vacantland'  && <VacantLand />}
               {activeTab === 'moveup'      && <MoveUpBuyer />}
+              {activeTab === 'convertrent' && <ConvertToRental />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
