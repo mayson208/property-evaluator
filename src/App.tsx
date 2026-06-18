@@ -60,6 +60,7 @@ import PropertyLLC from './components/PropertyLLC'
 import PortfolioTracker from './components/PortfolioTracker'
 import OpportunityZone from './components/OpportunityZone'
 import HouseHack from './components/HouseHack'
+import ArmAnalyzer from './components/ArmAnalyzer'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -121,6 +122,7 @@ const TABS = [
   { id: 'portfolio',    label: 'Portfolio',       icon: '📂' },
   { id: 'oppzone',      label: 'Opp Zone',        icon: '🏗' },
   { id: 'househack',    label: 'House Hack',      icon: '🔑' },
+  { id: 'arm',          label: 'ARM Analyzer',    icon: '📉' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -270,6 +272,7 @@ export default function App() {
               {activeTab === 'portfolio'   && <PortfolioTracker />}
               {activeTab === 'oppzone'     && <OpportunityZone />}
               {activeTab === 'househack'   && <HouseHack />}
+              {activeTab === 'arm'         && <ArmAnalyzer />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
