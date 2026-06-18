@@ -1,11 +1,25 @@
 import type { MarketDataPoint, NeighborhoodScore, InvestmentAnalysis } from '../types'
 
+// Seeded PRNG (mulberry32) for stable market data per state
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0; seed = seed + 0x6d2b79f5 | 0
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed)
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+}
+
+function stateSeed(state: string): number {
+  return state.split('').reduce((a, c, i) => a + c.charCodeAt(0) * (i + 1) * 31, 7)
+}
+
 export function generateMarketData(state: string, basePPF: number): MarketDataPoint[] {
+  const rand = mulberry32(stateSeed(state))
   const months: MarketDataPoint[] = []
   const now = new Date()
 
-  // Simulate 24 months of market data with trend
-  let price = basePPF * 1800   // rough median home value
+  let price = basePPF * 1800
   let ppf = basePPF
 
   for (let i = 23; i >= 0; i--) {
@@ -13,19 +27,18 @@ export function generateMarketData(state: string, basePPF: number): MarketDataPo
     d.setMonth(d.getMonth() - i)
     const label = d.toLocaleString('default', { month: 'short', year: '2-digit' })
 
-    // Add slight upward trend + seasonal noise
     const seasonal = Math.sin((d.getMonth() / 12) * Math.PI * 2) * 0.02
     const trend = 0.004
-    const noise = (Math.random() - 0.5) * 0.015
+    const noise = (rand() - 0.5) * 0.015
     price = price * (1 + trend + seasonal + noise)
-    ppf = ppf * (1 + trend * 0.8 + noise * 0.5)
+    ppf = ppf * (1 + trend * 0.8 + (rand() - 0.5) * 0.008)
 
     months.push({
       month: label,
       medianPrice: Math.round(price / 1000) * 1000,
       pricePerSqft: Math.round(ppf),
-      daysOnMarket: Math.round(28 + (Math.random() - 0.5) * 20),
-      inventory: Math.round(1.8 + (Math.random() - 0.5) * 1.2),
+      daysOnMarket: Math.round(28 + (rand() - 0.5) * 20),
+      inventory: Math.round((1.8 + (rand() - 0.5) * 1.2) * 10) / 10,
     })
   }
 
@@ -33,19 +46,18 @@ export function generateMarketData(state: string, basePPF: number): MarketDataPo
 }
 
 export function generateNeighborhoodScore(zip: string): NeighborhoodScore {
-  // Deterministic from zip so it doesn't change on re-render
   const seed = zip.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   const rng = (offset: number) => {
     const x = Math.sin(seed + offset) * 10000
     return Math.round(50 + (x - Math.floor(x)) * 45)
   }
 
-  const schools    = rng(1)
-  const safety     = rng(2)
+  const schools     = rng(1)
+  const safety      = rng(2)
   const walkability = rng(3)
-  const transit    = rng(4)
-  const amenities  = rng(5)
-  const overall    = Math.round((schools + safety + walkability + transit + amenities) / 5)
+  const transit     = rng(4)
+  const amenities   = rng(5)
+  const overall     = Math.round((schools + safety + walkability + transit + amenities) / 5)
 
   return { overall, schools, safety, walkability, transit, amenities }
 }
@@ -55,11 +67,12 @@ export function calculateInvestment(
   monthlyRent: number,
   downPaymentPct: number,
   interestRate: number,
-  expenses: { taxes: number; insurance: number; maintenance: number; vacancy: number },
+  expenses: { taxes: number; insurance: number; maintenance: number; vacancy: number; hoa?: number },
 ): InvestmentAnalysis {
   const annualRent = monthlyRent * 12
+  const annualHoa  = (expenses.hoa ?? 0) * 12
   const annualExpenses =
-    expenses.taxes + expenses.insurance +
+    expenses.taxes + expenses.insurance + annualHoa +
     (annualRent * expenses.vacancy / 100) +
     (propertyValue * expenses.maintenance / 100)
 
@@ -78,13 +91,12 @@ export function calculateInvestment(
 
   const annualDebtService = monthlyMortgage * 12
   const annualCashFlow = noi - annualDebtService
-  const cashOnCash = (annualCashFlow / downPayment) * 100
+  const cashOnCash = downPayment > 0 ? (annualCashFlow / downPayment) * 100 : 0
   const monthlyCashFlow = annualCashFlow / 12
 
-  // 5-year appreciation at 4% annual
   const futureValue = propertyValue * Math.pow(1.04, 5)
   const equityGain = futureValue - propertyValue
-  const totalReturn5yr = ((annualCashFlow * 5 + equityGain) / downPayment) * 100
+  const totalReturn5yr = downPayment > 0 ? ((annualCashFlow * 5 + equityGain) / downPayment) * 100 : 0
 
   const breakEvenYears = annualCashFlow > 0 ? downPayment / annualCashFlow : 999
 

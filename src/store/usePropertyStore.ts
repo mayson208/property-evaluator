@@ -98,6 +98,8 @@ interface PropertyStore {
   saveProperty: (label: string) => void
   loadProperty: (id: string) => void
   deleteProperty: (id: string) => void
+  exportJson: () => void
+  importJson: (json: string) => void
 
   // Active tab
   activeTab: string
@@ -178,6 +180,27 @@ export const usePropertyStore = create<PropertyStore>()(
       deleteProperty: (id) => set(s => ({
         savedProperties: s.savedProperties.filter(p => p.id !== id),
       })),
+
+      exportJson: () => {
+        const { savedProperties } = get()
+        const blob = new Blob([JSON.stringify({ savedProperties, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' })
+        const url  = URL.createObjectURL(blob)
+        const a    = document.createElement('a')
+        a.href = url; a.download = 'propvalue-export.json'; a.click()
+        URL.revokeObjectURL(url)
+      },
+
+      importJson: (json) => {
+        try {
+          const data = JSON.parse(json)
+          if (!Array.isArray(data.savedProperties)) return
+          set(s => ({
+            savedProperties: [...data.savedProperties, ...s.savedProperties]
+              .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+              .slice(0, 20),
+          }))
+        } catch { /* ignore bad json */ }
+      },
 
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),

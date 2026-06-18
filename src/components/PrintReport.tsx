@@ -1,5 +1,6 @@
 import { usePropertyStore } from '../store/usePropertyStore'
 import { generateNeighborhoodScore } from '../engine/market'
+import { getAnnualPropertyTax, getAnnualInsurance, getAnnualMaintenance } from '../engine/valuation'
 
 function fmt(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -35,6 +36,10 @@ export default function PrintReport() {
   const appreciation = input.purchasePrice && input.purchaseYear
     ? ((result.estimatedValue - input.purchasePrice) / input.purchasePrice) * 100
     : null
+  const annualTax   = getAnnualPropertyTax(result.estimatedValue, input.state)
+  const annualIns   = getAnnualInsurance(result.estimatedValue)
+  const annualMaint = getAnnualMaintenance(result.estimatedValue, input.yearBuilt)
+  const annualOwnership = annualTax + annualIns + annualMaint
 
   return (
     <div className="space-y-4">
@@ -180,6 +185,25 @@ export default function PrintReport() {
             </div>
           </Section>
         )}
+
+        {/* Annual Costs */}
+        <Section title="Estimated Annual Ownership Costs">
+          <div className="grid grid-cols-4 gap-4 text-sm mb-2">
+            {[
+              ['Property Tax',  fmt(annualTax),   `${input.state} eff. rate`],
+              ['Insurance',     fmt(annualIns),   '~0.5% of value'],
+              ['Maintenance',   fmt(annualMaint), input.yearBuilt < 1990 ? '1.5%/yr' : '1.0%/yr'],
+              ['Total Annual',  fmt(annualOwnership), `${fmt(Math.round(annualOwnership / 12))}/mo`],
+            ].map(([l, v, sub]) => (
+              <div key={String(l)} className="border-b border-slate-100 pb-2">
+                <p className="text-xs text-slate-400 uppercase tracking-wide">{l}</p>
+                <p className="font-semibold text-slate-700">{String(v)}</p>
+                <p className="text-xs text-slate-400">{String(sub)}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400">Excludes HOA, utilities, and mortgage payments.</p>
+        </Section>
 
         {/* Neighborhood */}
         <Section title="Neighborhood Scores">

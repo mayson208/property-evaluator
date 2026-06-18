@@ -42,6 +42,7 @@ export default function InvestmentAnalysis() {
   const [insuranceAnnual, setInsuranceAnnual] = useState(1800)
   const [vacancyRate, setVacancyRate] = useState(8)
   const [maintenancePct, setMaintenancePct] = useState(1)
+  const [monthlyHoa, setMonthlyHoa] = useState(0)
 
   if (!result) {
     return (
@@ -62,6 +63,7 @@ export default function InvestmentAnalysis() {
       insurance: insuranceAnnual,
       maintenance: maintenancePct,
       vacancy: vacancyRate,
+      hoa: monthlyHoa,
     },
   )
 
@@ -127,6 +129,13 @@ export default function InvestmentAnalysis() {
           format={v => `${v}% of value/yr`}
           onChange={setMaintenancePct}
         />
+        <Slider
+          label="HOA (monthly)"
+          value={monthlyHoa}
+          min={0} max={1500} step={25}
+          format={v => v > 0 ? fmt(v) + '/mo' : 'None'}
+          onChange={setMonthlyHoa}
+        />
       </div>
 
       {/* Metrics grid */}
@@ -183,6 +192,7 @@ export default function InvestmentAnalysis() {
           ['Loan Amount', fmt(loanAmount)],
           ['Monthly Payment (P&I)', fmt((loanAmount * (interestRate / 100 / 12) * Math.pow(1 + interestRate / 100 / 12, 360)) / (Math.pow(1 + interestRate / 100 / 12, 360) - 1))],
           ['Monthly Gross Rent', fmt(monthlyRent)],
+          ...(monthlyHoa > 0 ? [['Monthly HOA', fmt(monthlyHoa)]] : []),
           ['Monthly Net (after expenses)', fmt(analysis.monthlyCashFlow)],
         ].map(([l, v]) => (
           <div key={l} className="flex justify-between text-sm">
