@@ -88,6 +88,7 @@ import SaleLeasebackCalc from './components/SaleLeasebackCalc'
 import CostSegregation from './components/CostSegregation'
 import FixedVsARM from './components/FixedVsARM'
 import RealEstateSyndication from './components/RealEstateSyndication'
+import HoldVsSell from './components/HoldVsSell'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -177,6 +178,7 @@ const TABS = [
   { id: 'costseg',       label: 'Cost Seg',     icon: '🏗' },
   { id: 'fixedvsarm',    label: 'Fixed vs ARM', icon: '📊' },
   { id: 'syndication',   label: 'Syndication',  icon: '🤝' },
+  { id: 'holdvssell',    label: 'Hold vs Sell', icon: '⚖️' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -354,6 +356,7 @@ export default function App() {
               {activeTab === 'costseg'      && <CostSegregation />}
               {activeTab === 'fixedvsarm'   && <FixedVsARM />}
               {activeTab === 'syndication'  && <RealEstateSyndication />}
+              {activeTab === 'holdvssell'   && <HoldVsSell />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
