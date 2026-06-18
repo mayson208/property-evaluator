@@ -93,6 +93,7 @@ import MobileHomePark from './components/MobileHomePark'
 import SellerFinancing from './components/SellerFinancing'
 import ADUCalc from './components/ADUCalc'
 import LeverageComparison from './components/LeverageComparison'
+import CommercialLease from './components/CommercialLease'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -187,6 +188,7 @@ const TABS = [
   { id: 'sellerfinance', label: 'Seller Finance', icon: '📝' },
   { id: 'adu',           label: 'ADU',           icon: '🏠' },
   { id: 'leverage',      label: 'Leverage',      icon: '📐' },
+  { id: 'commerciallease', label: 'Comm. Lease', icon: '🏢' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -369,6 +371,7 @@ export default function App() {
               {activeTab === 'sellerfinance' && <SellerFinancing />}
               {activeTab === 'adu'          && <ADUCalc />}
               {activeTab === 'leverage'     && <LeverageComparison />}
+              {activeTab === 'commerciallease' && <CommercialLease />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
