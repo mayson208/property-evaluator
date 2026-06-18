@@ -1,340 +1,278 @@
 import { useState, useMemo } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
-
-function fmt(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 
 interface Property {
   id: string
-  label: string
-  currentValue: number
+  name: string
+  type: 'sfr' | 'multifamily' | 'commercial' | 'str' | 'land' | 'mhp'
   purchasePrice: number
-  yearPurchased: number
-  mortgageBalance: number
+  currentValue: number
+  loanBalance: number
   monthlyRent: number
-  monthlyExpenses: number   // insurance, tax, maintenance, vacancy reserve
-  monthlyDebtService: number
+  monthlyExpenses: number
+  monthlyMortgage: number
+  purchaseYear: number
+  appreciationRate: number
 }
 
-const DEFAULT_PROPERTIES: Property[] = [
-  {
-    id: '1', label: '123 Main St (Primary)',
-    currentValue: 450000, purchasePrice: 280000, yearPurchased: 2016,
-    mortgageBalance: 180000, monthlyRent: 0, monthlyExpenses: 1200, monthlyDebtService: 1400,
-  },
-  {
-    id: '2', label: '456 Oak Ave (Rental)',
-    currentValue: 320000, purchasePrice: 220000, yearPurchased: 2019,
-    mortgageBalance: 190000, monthlyRent: 2400, monthlyExpenses: 700, monthlyDebtService: 1100,
-  },
-  {
-    id: '3', label: '789 Elm Rd (Rental)',
-    currentValue: 270000, purchasePrice: 200000, yearPurchased: 2021,
-    mortgageBalance: 175000, monthlyRent: 1900, monthlyExpenses: 600, monthlyDebtService: 980,
-  },
+const TYPES = { sfr: 'SFR', multifamily: 'Multifamily', commercial: 'Commercial', str: 'STR/Airbnb', land: 'Land', mhp: 'MHP' }
+const TYPE_COLORS: Record<string, string> = { sfr: '#3b82f6', multifamily: '#22c55e', commercial: '#f59e0b', str: '#a855f7', land: '#94a3b8', mhp: '#ef4444' }
+
+const DEF_PROPERTIES: Property[] = [
+  { id: '1', name: '123 Main St (SFR)', type: 'sfr', purchasePrice: 280000, currentValue: 385000, loanBalance: 195000, monthlyRent: 2200, monthlyExpenses: 450, monthlyMortgage: 1180, purchaseYear: 2018, appreciationRate: 4 },
+  { id: '2', name: '456 Oak Ave (Duplex)', type: 'multifamily', purchasePrice: 420000, currentValue: 560000, loanBalance: 310000, monthlyRent: 3400, monthlyExpenses: 720, monthlyMortgage: 2050, purchaseYear: 2020, appreciationRate: 4 },
+  { id: '3', name: '789 Pine Rd (SFR)', type: 'sfr', purchasePrice: 195000, currentValue: 248000, loanBalance: 128000, monthlyRent: 1650, monthlyExpenses: 320, monthlyMortgage: 890, purchaseYear: 2019, appreciationRate: 3.5 },
+  { id: '4', name: '321 River Dr (STR)', type: 'str', purchasePrice: 550000, currentValue: 620000, loanBalance: 420000, monthlyRent: 5800, monthlyExpenses: 1400, monthlyMortgage: 3100, purchaseYear: 2022, appreciationRate: 5 },
 ]
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#84cc16']
+let nextId = 5
 
-let nextId = 4
-function makeId() { return String(nextId++) }
-
-function emptyProperty(): Property {
-  return {
-    id: makeId(), label: 'New Property',
-    currentValue: 300000, purchasePrice: 250000, yearPurchased: 2022,
-    mortgageBalance: 200000, monthlyRent: 1800, monthlyExpenses: 600, monthlyDebtService: 1000,
-  }
+function newProp(): Property {
+  return { id: String(nextId++), name: `New Property`, type: 'sfr', purchasePrice: 300000, currentValue: 320000, loanBalance: 240000, monthlyRent: 1800, monthlyExpenses: 400, monthlyMortgage: 1400, purchaseYear: new Date().getFullYear(), appreciationRate: 4 }
 }
 
+const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const fmtM = (n: number) => n >= 1000000 ? `$${(n / 1000000).toFixed(2)}M` : fmt(n)
+
 export default function PortfolioTracker() {
-  const [properties, setProperties] = useState<Property[]>(DEFAULT_PROPERTIES)
-  const [selectedId,  setSelectedId]  = useState<string | null>(null)
+  const [properties, setProperties] = useState<Property[]>(DEF_PROPERTIES)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [projYears, setProjYears] = useState(10)
 
-  const update = (id: string, field: keyof Property, value: string | number) => {
-    setProperties(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p))
-  }
+  const updateProp = (id: string, k: keyof Property, v: string) =>
+    setProperties(ps => ps.map(p => p.id === id ? { ...p, [k]: typeof p[k] === 'number' ? parseFloat(v) || 0 : v } : p))
 
-  const addProperty = () => {
-    const p = emptyProperty()
-    setProperties(prev => [...prev, p])
-    setSelectedId(p.id)
-  }
-
-  const removeProperty = (id: string) => {
-    setProperties(prev => prev.filter(p => p.id !== id))
-    if (selectedId === id) setSelectedId(null)
-  }
-
-  const metrics = useMemo(() => {
-    const year = new Date().getFullYear()
-    return properties.map(p => {
-      const equity       = p.currentValue - p.mortgageBalance
-      const ltv          = p.mortgageBalance / p.currentValue * 100
-      const grossRentAnn = p.monthlyRent * 12
-      const expenseAnn   = p.monthlyExpenses * 12
-      const debtAnn      = p.monthlyDebtService * 12
-      const noi          = grossRentAnn - expenseAnn
-      const cashFlow     = noi - debtAnn
-      const capRate      = p.currentValue > 0 ? noi / p.currentValue * 100 : 0
-      const totalCashIn  = p.purchasePrice * 0.20 + p.purchasePrice * 0.03  // 20% down + 3% closing
-      const coc          = totalCashIn > 0 && p.monthlyRent > 0 ? cashFlow / totalCashIn * 100 : 0
-      const onePercent   = p.currentValue > 0 ? p.monthlyRent / p.currentValue * 100 : 0
-      const totalReturn  = p.purchasePrice > 0 ? (p.currentValue - p.purchasePrice) / p.purchasePrice * 100 : 0
-      const holdYears    = year - p.yearPurchased
-      const annualReturn = holdYears > 0 ? (Math.pow(1 + totalReturn / 100, 1 / holdYears) - 1) * 100 : 0
-      return { ...p, equity, ltv, noi, cashFlow, capRate, coc, onePercent, totalReturn, holdYears, annualReturn, grossRentAnn }
+  const calc = useMemo(() => {
+    const propMetrics = properties.map(p => {
+      const equity = p.currentValue - p.loanBalance
+      const gain = p.currentValue - p.purchasePrice
+      const gainPct = p.purchasePrice > 0 ? gain / p.purchasePrice * 100 : 0
+      const annualRent = p.monthlyRent * 12
+      const annualExpenses = p.monthlyExpenses * 12
+      const annualMortgage = p.monthlyMortgage * 12
+      const noi = annualRent - annualExpenses
+      const cashFlow = noi - annualMortgage
+      const capRate = p.currentValue > 0 ? noi / p.currentValue * 100 : 0
+      const dscr = annualMortgage > 0 ? noi / annualMortgage : Infinity
+      const yearsHeld = new Date().getFullYear() - p.purchaseYear
+      return { ...p, equity, gain, gainPct, annualRent, annualExpenses, annualMortgage, noi, cashFlow, capRate, dscr, yearsHeld }
     })
-  }, [properties])
 
-  const totals = useMemo(() => {
-    const totalValue    = metrics.reduce((s, m) => s + m.currentValue, 0)
-    const totalDebt     = metrics.reduce((s, m) => s + m.mortgageBalance, 0)
-    const totalEquity   = totalValue - totalDebt
-    const totalNOI      = metrics.reduce((s, m) => s + m.noi, 0)
-    const totalCashFlow = metrics.reduce((s, m) => s + m.cashFlow, 0)
-    const totalRent     = metrics.reduce((s, m) => s + m.grossRentAnn, 0)
+    const totalValue = propMetrics.reduce((s, p) => s + p.currentValue, 0)
+    const totalDebt = propMetrics.reduce((s, p) => s + p.loanBalance, 0)
+    const totalEquity = totalValue - totalDebt
+    const totalAnnualRent = propMetrics.reduce((s, p) => s + p.annualRent, 0)
+    const totalNOI = propMetrics.reduce((s, p) => s + p.noi, 0)
+    const totalCashFlow = propMetrics.reduce((s, p) => s + p.cashFlow, 0)
+    const totalDebtService = propMetrics.reduce((s, p) => s + p.annualMortgage, 0)
     const portfolioCapRate = totalValue > 0 ? totalNOI / totalValue * 100 : 0
-    const overallLTV    = totalValue > 0 ? totalDebt / totalValue * 100 : 0
-    const rentals       = metrics.filter(m => m.monthlyRent > 0)
-    const avgCoc        = rentals.length > 0 ? rentals.reduce((s, m) => s + m.coc, 0) / rentals.length : 0
-    const totalGain     = metrics.reduce((s, m) => s + (m.currentValue - m.purchasePrice), 0)
+    const portfolioDSCR = totalDebtService > 0 ? totalNOI / totalDebtService : 0
+    const overallLTV = totalValue > 0 ? totalDebt / totalValue * 100 : 0
 
-    // Health score
-    let score = 0
-    if (portfolioCapRate >= 6)   score += 2
-    else if (portfolioCapRate >= 4) score += 1
-    if (overallLTV <= 70)        score += 2
-    else if (overallLTV <= 80)   score += 1
-    if (totalCashFlow > 0)       score += 2
-    if (avgCoc >= 8)             score += 2
-    else if (avgCoc >= 5)        score += 1
-    if (rentals.length >= 2)     score += 1
+    const byType: Record<string, { count: number; value: number; equity: number; cashFlow: number }> = {}
+    propMetrics.forEach(p => {
+      if (!byType[p.type]) byType[p.type] = { count: 0, value: 0, equity: 0, cashFlow: 0 }
+      byType[p.type].count++
+      byType[p.type].value += p.currentValue
+      byType[p.type].equity += p.equity
+      byType[p.type].cashFlow += p.cashFlow
+    })
+    const typeBreakdown = Object.entries(byType).map(([type, v]) => ({ name: TYPES[type as keyof typeof TYPES] ?? type, type, ...v }))
 
-    const health = score >= 8 ? { label: 'Excellent', color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/50' }
-      : score >= 6 ? { label: 'Good', color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-700/50' }
-      : score >= 4 ? { label: 'Fair', color: 'text-yellow-400', bg: 'bg-yellow-900/20 border-yellow-700/50' }
-      : { label: 'Needs Work', color: 'text-red-400', bg: 'bg-red-900/20 border-red-700/50' }
+    const yearlyProjection = Array.from({ length: projYears }, (_, i) => {
+      const y = i + 1
+      let projValue = 0, projEquity = 0, projCF = 0
+      propMetrics.forEach(p => {
+        const val = p.currentValue * Math.pow(1 + p.appreciationRate / 100, y)
+        const rent = p.annualRent * Math.pow(1.03, y)
+        const noi2 = rent - p.annualExpenses
+        const cf = noi2 - p.annualMortgage
+        projValue += val
+        projEquity += val - p.loanBalance * 0.97 ** y
+        projCF += cf
+      })
+      return { year: `Yr ${y}`, value: Math.round(projValue), equity: Math.round(projEquity), annualCF: Math.round(projCF) }
+    })
 
-    return { totalValue, totalDebt, totalEquity, totalNOI, totalCashFlow, totalRent, portfolioCapRate, overallLTV, avgCoc, totalGain, health, score }
-  }, [metrics])
+    return { propMetrics, totalValue, totalDebt, totalEquity, totalAnnualRent, totalNOI, totalCashFlow, totalDebtService, portfolioCapRate, portfolioDSCR, overallLTV, typeBreakdown, yearlyProjection }
+  }, [properties, projYears])
 
-  const equityData  = metrics.map(m => ({ name: m.label.split('(')[0].trim(), value: Math.max(m.equity, 0) }))
-  const cashFlowData = metrics.map((m, i) => ({ name: m.label.split('(')[0].trim(), cf: m.cashFlow, color: COLORS[i % COLORS.length] }))
-
-  const selected = selectedId ? metrics.find(m => m.id === selectedId) : null
-
-  const NumInput = ({ label, value, field, propId, prefix = '', suffix = '' }: {
-    label: string; value: number; field: keyof Property; propId: string; prefix?: string; suffix?: string
-  }) => (
-    <div>
-      <label className="text-xs text-slate-500">{label}</label>
-      <div className="flex items-center gap-1 mt-0.5">
-        {prefix && <span className="text-xs text-slate-500">{prefix}</span>}
-        <input type="number" value={value}
-          onChange={e => update(propId, field, Number(e.target.value))}
-          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 text-sm text-slate-200" />
-        {suffix && <span className="text-xs text-slate-500">{suffix}</span>}
-      </div>
-    </div>
-  )
+  const selProp = calc.propMetrics.find(p => p.id === selected)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-1">Portfolio Tracker</h3>
-          <p className="text-xs text-slate-500">Track all your properties — equity, cash flow, cap rates, and overall portfolio health.</p>
+          <h2 className="text-lg font-bold text-white">Portfolio Tracker</h2>
+          <p className="text-slate-400 text-xs mt-1">Aggregate metrics across all properties — equity, NOI, cash flow, DSCR, and multi-year projections</p>
         </div>
-        <button onClick={addProperty}
-          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-semibold transition flex-shrink-0">
+        <button onClick={() => setProperties(ps => [...ps, newProp()])} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition">
           + Add Property
         </button>
       </div>
 
-      {/* Portfolio health banner */}
-      <div className={`rounded-xl p-4 border ${totals.health.bg}`}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Portfolio Health</p>
-          <span className={`text-xl font-black ${totals.health.color}`}>{totals.health.label}</span>
-        </div>
-        <div className="w-full bg-slate-700 rounded-full h-2">
-          <div className="h-2 rounded-full bg-gradient-to-r from-blue-600 to-green-500 transition-all"
-            style={{ width: `${(totals.score / 9) * 100}%` }} />
-        </div>
-      </div>
-
-      {/* Totals grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Portfolio Value',  val: fmt(totals.totalValue),     color: 'text-white' },
-          { label: 'Total Equity',           val: fmt(totals.totalEquity),    color: 'text-green-400' },
-          { label: 'Annual NOI',             val: fmt(totals.totalNOI),       color: 'text-blue-400' },
-          { label: 'Annual Cash Flow',       val: fmt(totals.totalCashFlow),  color: totals.totalCashFlow >= 0 ? 'text-green-400' : 'text-red-400' },
-          { label: 'Portfolio Cap Rate',     val: totals.portfolioCapRate.toFixed(1) + '%', color: totals.portfolioCapRate >= 6 ? 'text-green-400' : 'text-yellow-400' },
-          { label: 'Overall LTV',            val: totals.overallLTV.toFixed(1) + '%',  color: totals.overallLTV <= 70 ? 'text-green-400' : 'text-yellow-400' },
-          { label: 'Avg Cash-on-Cash',       val: totals.avgCoc.toFixed(1) + '%',      color: totals.avgCoc >= 8 ? 'text-green-400' : 'text-yellow-400' },
-          { label: 'Total Appreciation',     val: fmt(totals.totalGain),      color: 'text-purple-400' },
-        ].map(s => (
-          <div key={s.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-center">
-            <p className="text-xs text-slate-500 mb-1">{s.label}</p>
-            <p className={`text-lg font-black ${s.color}`}>{s.val}</p>
+          { label: 'Total Portfolio Value', value: fmtM(calc.totalValue), color: 'text-white' },
+          { label: 'Total Equity', value: fmtM(calc.totalEquity), color: 'text-green-400' },
+          { label: 'Annual Cash Flow', value: fmt(calc.totalCashFlow), color: calc.totalCashFlow > 0 ? 'text-blue-400' : 'text-red-400' },
+          { label: 'Annual Gross Rent', value: fmt(calc.totalAnnualRent), color: 'text-purple-400' },
+        ].map(m => (
+          <div key={m.label} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 text-center">
+            <p className={`text-2xl font-black ${m.color}`}>{m.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{m.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Portfolio Cap Rate', value: `${calc.portfolioCapRate.toFixed(2)}%`, color: calc.portfolioCapRate >= 6 ? 'text-green-400' : 'text-yellow-400' },
+          { label: 'Portfolio DSCR', value: calc.portfolioDSCR.toFixed(2), color: calc.portfolioDSCR >= 1.25 ? 'text-green-400' : 'text-red-400' },
+          { label: 'Overall LTV', value: `${calc.overallLTV.toFixed(1)}%`, color: calc.overallLTV <= 65 ? 'text-green-400' : calc.overallLTV <= 80 ? 'text-yellow-400' : 'text-red-400' },
+          { label: 'Total Debt', value: fmtM(calc.totalDebt), color: 'text-orange-400' },
+        ].map(m => (
+          <div key={m.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-center">
+            <p className={`text-xl font-black ${m.color}`}>{m.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{m.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Property Table */}
+      <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+        <div className="p-3 border-b border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Properties ({properties.length}) — Click to edit</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-500 border-b border-slate-700 bg-slate-900/50">
+                <th className="text-left py-2 px-3">Property</th>
+                <th className="text-right py-2 px-3">Value</th>
+                <th className="text-right py-2 px-3">Equity</th>
+                <th className="text-right py-2 px-3">NOI/yr</th>
+                <th className="text-right py-2 px-3">CF/mo</th>
+                <th className="text-right py-2 px-3">Cap Rate</th>
+                <th className="text-right py-2 px-3">DSCR</th>
+                <th className="text-right py-2 px-3">Gain%</th>
+                <th className="py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {calc.propMetrics.map(p => (
+                <tr key={p.id} className={`cursor-pointer transition ${selected === p.id ? 'bg-blue-900/20' : 'hover:bg-slate-700/20'}`}
+                  onClick={() => setSelected(s => s === p.id ? null : p.id)}>
+                  <td className="py-2 px-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: TYPE_COLORS[p.type] }} />
+                      <span className="text-slate-200 font-semibold">{p.name}</span>
+                    </div>
+                    <p className="text-slate-500 ml-4">{TYPES[p.type]} · {p.yearsHeld}yr hold</p>
+                  </td>
+                  <td className="text-right py-2 px-3 text-slate-300">{fmt(p.currentValue)}</td>
+                  <td className="text-right py-2 px-3 text-green-400 font-bold">{fmt(p.equity)}</td>
+                  <td className="text-right py-2 px-3 text-blue-400">{fmt(p.noi)}</td>
+                  <td className={`text-right py-2 px-3 font-bold ${p.cashFlow / 12 >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(p.cashFlow / 12)}</td>
+                  <td className={`text-right py-2 px-3 ${p.capRate >= 6 ? 'text-green-400' : 'text-yellow-400'}`}>{p.capRate.toFixed(2)}%</td>
+                  <td className={`text-right py-2 px-3 ${p.dscr >= 1.25 ? 'text-green-400' : 'text-red-400'}`}>{p.dscr === Infinity ? '∞' : p.dscr.toFixed(2)}</td>
+                  <td className={`text-right py-2 px-3 ${p.gainPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>{p.gainPct.toFixed(1)}%</td>
+                  <td className="py-2 px-3 text-center">
+                    <button onClick={e => { e.stopPropagation(); setProperties(ps => ps.filter(x => x.id !== p.id)) }} className="text-slate-600 hover:text-red-400">✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-600 bg-slate-900/50 font-bold text-xs">
+                <td className="py-2 px-3 text-slate-300">TOTAL ({properties.length} properties)</td>
+                <td className="text-right py-2 px-3 text-white">{fmtM(calc.totalValue)}</td>
+                <td className="text-right py-2 px-3 text-green-400">{fmtM(calc.totalEquity)}</td>
+                <td className="text-right py-2 px-3 text-blue-400">{fmt(calc.totalNOI)}</td>
+                <td className={`text-right py-2 px-3 ${calc.totalCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmt(calc.totalCashFlow / 12)}</td>
+                <td className="text-right py-2 px-3 text-yellow-400">{calc.portfolioCapRate.toFixed(2)}%</td>
+                <td className={`text-right py-2 px-3 ${calc.portfolioDSCR >= 1.25 ? 'text-green-400' : 'text-red-400'}`}>{calc.portfolioDSCR.toFixed(2)}</td>
+                <td className="py-2 px-3"></td>
+                <td className="py-2 px-3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Edit Panel */}
+      {selProp && (
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-blue-700/40">
+          <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-3">Editing: {selProp.name}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {(['name', 'currentValue', 'loanBalance', 'monthlyRent', 'monthlyExpenses', 'monthlyMortgage', 'purchasePrice', 'purchaseYear', 'appreciationRate'] as const).map(key => (
+              <div key={key}>
+                <label className="block text-xs text-slate-400 mb-1 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
+                <input value={String(selProp[key])} onChange={e => updateProp(selProp.id, key, e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Type</label>
+              <select value={selProp.type} onChange={e => updateProp(selProp.id, 'type', e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-          <p className="text-xs text-slate-400 uppercase tracking-widest mb-3">Equity Distribution</p>
-          <ResponsiveContainer width="100%" height={160}>
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Value by Type</p>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={equityData} dataKey="value" cx="50%" cy="50%" outerRadius={60} paddingAngle={3}>
-                {equityData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              <Pie data={calc.typeBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                {calc.typeBreakdown.map((t, i) => <Cell key={i} fill={TYPE_COLORS[t.type] ?? '#94a3b8'} />)}
               </Pie>
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                formatter={(v: number) => [fmt(v), 'Equity']} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-          <p className="text-xs text-slate-400 uppercase tracking-widest mb-3">Monthly Cash Flow by Property</p>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={cashFlowData.map(d => ({ ...d, cf: Math.round(d.cf / 12) }))} margin={{ top: 0, right: 5, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} tickFormatter={v => `$${v}`} />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                formatter={(v: number) => [fmt(v), 'Monthly CF']} />
-              <Bar dataKey="cf" radius={[4, 4, 0, 0]}>
-                {cashFlowData.map((d, i) => (
-                  <Cell key={i} fill={d.cf >= 0 ? COLORS[i % COLORS.length] : '#ef4444'} />
-                ))}
-              </Bar>
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Monthly Cash Flow by Property</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={calc.propMetrics.map(p => ({ name: p.name.split(' (')[0], cf: Math.round(p.cashFlow / 12) }))}>
+              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 9 }} />
+              <YAxis tickFormatter={v => `$${v}`} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+              <Bar dataKey="cf" name="Monthly Cash Flow" radius={[4, 4, 0, 0]} fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Properties table */}
-      <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
-        <div className="px-4 py-2 bg-slate-800/80 border-b border-slate-700">
-          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Property Details</p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-slate-700 text-slate-500">
-                <th className="px-3 py-2 text-left">Property</th>
-                <th className="px-3 py-2 text-right">Value</th>
-                <th className="px-3 py-2 text-right">Equity</th>
-                <th className="px-3 py-2 text-right">LTV</th>
-                <th className="px-3 py-2 text-right">Mo. Rent</th>
-                <th className="px-3 py-2 text-right">Mo. CF</th>
-                <th className="px-3 py-2 text-right">Cap Rate</th>
-                <th className="px-3 py-2 text-right">CoC</th>
-                <th className="px-3 py-2 text-right">1% Rule</th>
-                <th className="px-3 py-2 text-right">Ann. Appr</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/50">
-              {metrics.map((m, i) => (
-                <tr key={m.id}
-                  className={`cursor-pointer transition ${selectedId === m.id ? 'bg-blue-900/20' : 'hover:bg-slate-700/20'}`}
-                  onClick={() => setSelectedId(selectedId === m.id ? null : m.id)}>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
-                      <span className="text-slate-300 font-semibold max-w-[120px] truncate">{m.label}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-right text-slate-300">{fmt(m.currentValue)}</td>
-                  <td className="px-3 py-2 text-right text-green-400 font-semibold">{fmt(m.equity)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <span className={m.ltv <= 70 ? 'text-green-400' : m.ltv <= 80 ? 'text-yellow-400' : 'text-red-400'}>
-                      {m.ltv.toFixed(0)}%
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right text-slate-300">{m.monthlyRent > 0 ? fmt(m.monthlyRent) : '—'}</td>
-                  <td className="px-3 py-2 text-right font-semibold">
-                    <span className={m.cashFlow >= 0 ? 'text-green-400' : 'text-red-400'}>{fmt(m.cashFlow / 12)}/mo</span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {m.monthlyRent > 0 ? (
-                      <span className={m.capRate >= 6 ? 'text-green-400' : m.capRate >= 4 ? 'text-yellow-400' : 'text-red-400'}>
-                        {m.capRate.toFixed(1)}%
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {m.monthlyRent > 0 ? (
-                      <span className={m.coc >= 8 ? 'text-green-400' : m.coc >= 5 ? 'text-yellow-400' : 'text-red-400'}>
-                        {m.coc.toFixed(1)}%
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {m.monthlyRent > 0 ? (
-                      <span className={m.onePercent >= 1 ? 'text-green-400' : m.onePercent >= 0.75 ? 'text-yellow-400' : 'text-red-400'}>
-                        {m.onePercent.toFixed(2)}%
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <span className={m.annualReturn >= 5 ? 'text-green-400' : 'text-slate-400'}>
-                      {m.annualReturn.toFixed(1)}%/yr
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={e => { e.stopPropagation(); removeProperty(m.id) }}
-                      className="text-slate-600 hover:text-red-400 transition text-xs px-1">✕</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Inline editor for selected property */}
-      {selected && (
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-blue-700/50">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Edit: {selected.label}</p>
-            <button onClick={() => setSelectedId(null)} className="text-slate-500 hover:text-slate-300 text-xs">Close ✕</button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="col-span-2 sm:col-span-3">
-              <label className="text-xs text-slate-500">Label / Address</label>
-              <input type="text" value={selected.label}
-                onChange={e => update(selected.id, 'label', e.target.value)}
-                className="mt-0.5 w-full bg-slate-900 border border-slate-600 rounded-lg px-2 py-1 text-sm text-slate-200" />
-            </div>
-            <NumInput label="Current Value ($)" value={selected.currentValue} field="currentValue" propId={selected.id} prefix="$" />
-            <NumInput label="Purchase Price ($)" value={selected.purchasePrice} field="purchasePrice" propId={selected.id} prefix="$" />
-            <NumInput label="Year Purchased" value={selected.yearPurchased} field="yearPurchased" propId={selected.id} />
-            <NumInput label="Mortgage Balance ($)" value={selected.mortgageBalance} field="mortgageBalance" propId={selected.id} prefix="$" />
-            <NumInput label="Monthly Rent ($)" value={selected.monthlyRent} field="monthlyRent" propId={selected.id} prefix="$" />
-            <NumInput label="Monthly Expenses ($)" value={selected.monthlyExpenses} field="monthlyExpenses" propId={selected.id} prefix="$" />
-            <NumInput label="Monthly Debt Service ($)" value={selected.monthlyDebtService} field="monthlyDebtService" propId={selected.id} prefix="$" />
-          </div>
-        </div>
-      )}
-
-      {/* Legend */}
+      {/* Projection */}
       <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-2 font-bold">Metric Benchmarks</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs text-slate-500">
-          <p><span className="text-green-400">Cap Rate ≥ 6%</span> = strong cash producer</p>
-          <p><span className="text-green-400">CoC ≥ 8%</span> = solid return on cash invested</p>
-          <p><span className="text-green-400">1% Rule ≥ 1%</span> = passes quick cash flow test</p>
-          <p><span className="text-green-400">LTV ≤ 70%</span> = well-positioned equity buffer</p>
-          <p><span className="text-yellow-400">4-6% Cap Rate</span> = typical for appreciating markets</p>
-          <p><span className="text-red-400">Negative CF</span> = speculative / appreciation bet</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Portfolio Projection</p>
+          <div className="flex items-center gap-1 text-xs">
+            {[5, 10, 15, 20].map(y => (
+              <button key={y} onClick={() => setProjYears(y)}
+                className={`px-2 py-1 rounded ${projYears === y ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}>{y}yr</button>
+            ))}
+          </div>
         </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={calc.yearlyProjection}>
+            <XAxis dataKey="year" tick={{ fill: '#64748b', fontSize: 10 }} />
+            <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} />
+            <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="value" stroke="#94a3b8" strokeWidth={2} dot={false} name="Portfolio Value" strokeDasharray="5 3" />
+            <Line type="monotone" dataKey="equity" stroke="#3b82f6" strokeWidth={2} dot={false} name="Total Equity" />
+            <Line type="monotone" dataKey="annualCF" stroke="#22c55e" strokeWidth={2} dot={false} name="Annual Cash Flow" />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )
