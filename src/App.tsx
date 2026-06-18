@@ -37,6 +37,9 @@ import HelocCalc from './components/HelocCalc'
 import FirstTimeBuyer from './components/FirstTimeBuyer'
 import BrrrrCalc from './components/BrrrrCalc'
 import AppraisalGap from './components/AppraisalGap'
+import WholesaleCalc from './components/WholesaleCalc'
+import PropertyMgmt from './components/PropertyMgmt'
+import MortgagePayoff from './components/MortgagePayoff'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -75,6 +78,9 @@ const TABS = [
   { id: 'firsttime',   label: 'First-Time',    icon: '🔑' },
   { id: 'brrrr',       label: 'BRRRR',         icon: '♻️' },
   { id: 'appraisal',   label: 'Appraisal Gap', icon: '📐' },
+  { id: 'wholesale',   label: 'Wholesale',     icon: '🤝' },
+  { id: 'propmgmt',    label: 'Prop Mgmt',     icon: '🏢' },
+  { id: 'payoff',      label: 'Payoff Planner',icon: '🎯' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -201,6 +207,9 @@ export default function App() {
               {activeTab === 'firsttime'   && <FirstTimeBuyer />}
               {activeTab === 'brrrr'       && <BrrrrCalc />}
               {activeTab === 'appraisal'   && <AppraisalGap />}
+              {activeTab === 'wholesale'   && <WholesaleCalc />}
+              {activeTab === 'propmgmt'    && <PropertyMgmt />}
+              {activeTab === 'payoff'      && <MortgagePayoff />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
