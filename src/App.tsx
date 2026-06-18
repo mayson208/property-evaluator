@@ -84,6 +84,7 @@ import DSTCalc from './components/DSTCalc'
 import InstallmentSaleCalc from './components/InstallmentSaleCalc'
 import QBIDeduction from './components/QBIDeduction'
 import MortgagePointsCalc from './components/MortgagePointsCalc'
+import SaleLeasebackCalc from './components/SaleLeasebackCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -169,6 +170,7 @@ const TABS = [
   { id: 'installsale',  label: 'Install. Sale', icon: '📑' },
   { id: 'qbi',          label: 'QBI §199A',     icon: '💰' },
   { id: 'mortgagepoints', label: 'Mtg Points',  icon: '📉' },
+  { id: 'saleleaseback', label: 'Sale-Leaseback', icon: '🔁' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -342,6 +344,7 @@ export default function App() {
               {activeTab === 'installsale' && <InstallmentSaleCalc />}
               {activeTab === 'qbi'         && <QBIDeduction />}
               {activeTab === 'mortgagepoints' && <MortgagePointsCalc />}
+              {activeTab === 'saleleaseback' && <SaleLeasebackCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
