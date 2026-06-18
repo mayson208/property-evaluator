@@ -79,6 +79,7 @@ import PropertyDevelopment from './components/PropertyDevelopment'
 import TaxWithholdingCalc from './components/TaxWithholdingCalc'
 import RelocationCalc from './components/RelocationCalc'
 import EvictionCostCalc from './components/EvictionCostCalc'
+import SubdivisionCalc from './components/SubdivisionCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -159,6 +160,7 @@ const TABS = [
   { id: 'taxwithhold',  label: 'Tax Withhold',  icon: '🧾' },
   { id: 'relocate',     label: 'Relocation',    icon: '✈️' },
   { id: 'eviction',     label: 'Eviction Cost', icon: '⚖️' },
+  { id: 'subdivision',  label: 'Subdivision',   icon: '🗺️' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -327,6 +329,7 @@ export default function App() {
               {activeTab === 'taxwithhold' && <TaxWithholdingCalc />}
               {activeTab === 'relocate'    && <RelocationCalc />}
               {activeTab === 'eviction'    && <EvictionCostCalc />}
+              {activeTab === 'subdivision' && <SubdivisionCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
