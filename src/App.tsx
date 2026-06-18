@@ -8,6 +8,8 @@ import InvestmentAnalysis from './components/InvestmentAnalysis'
 import NeighborhoodScore from './components/NeighborhoodScore'
 import MortgageCalc from './components/MortgageCalc'
 import SavedProperties from './components/SavedProperties'
+import PrintReport from './components/PrintReport'
+import PropertyComparison from './components/PropertyComparison'
 
 const TABS = [
   { id: 'valuation',    label: 'Valuation',    icon: '🏠' },
@@ -17,7 +19,9 @@ const TABS = [
   { id: 'investment',   label: 'Investment',   icon: '💰' },
   { id: 'neighborhood', label: 'Area',         icon: '📍' },
   { id: 'mortgage',     label: 'Mortgage',     icon: '🏦' },
+  { id: 'compare',      label: 'Compare',      icon: '⚖️' },
   { id: 'saved',        label: 'Saved',        icon: '💾' },
+  { id: 'report',       label: 'Report',       icon: '🖨' },
 ]
 
 export default function App() {
@@ -97,7 +101,9 @@ export default function App() {
               {activeTab === 'investment'   && <InvestmentAnalysis />}
               {activeTab === 'neighborhood' && <NeighborhoodScore />}
               {activeTab === 'mortgage'     && <MortgageCalc />}
+              {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
+              {activeTab === 'report'       && <PrintReport />}
             </div>
           </div>
         </div>
