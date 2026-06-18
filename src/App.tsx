@@ -27,6 +27,8 @@ import DownPaymentTracker from './components/DownPaymentTracker'
 import SellerNetSheet from './components/SellerNetSheet'
 import Exchange1031 from './components/Exchange1031'
 import BuyingTimeline from './components/BuyingTimeline'
+import EnergyROI from './components/EnergyROI'
+import ShortTermRental from './components/ShortTermRental'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -55,6 +57,8 @@ const TABS = [
   { id: 'sellersheet',  label: 'Seller Net',    icon: '📄' },
   { id: 'exchange1031', label: '1031 Exchange', icon: '🔄' },
   { id: 'timeline',     label: 'Buy Guide',     icon: '📅' },
+  { id: 'energyroi',   label: 'Green ROI',     icon: '🌱' },
+  { id: 'str',         label: 'STR / Airbnb',  icon: '🏡' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -171,6 +175,8 @@ export default function App() {
               {activeTab === 'sellersheet'  && <SellerNetSheet />}
               {activeTab === 'exchange1031' && <Exchange1031 />}
               {activeTab === 'timeline'     && <BuyingTimeline />}
+              {activeTab === 'energyroi'   && <EnergyROI />}
+              {activeTab === 'str'         && <ShortTermRental />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
