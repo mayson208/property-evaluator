@@ -43,6 +43,9 @@ import MortgagePayoff from './components/MortgagePayoff'
 import DepreciationCalc from './components/DepreciationCalc'
 import LenderCompare from './components/LenderCompare'
 import OfferCalculator from './components/OfferCalculator'
+import HOACalc from './components/HOACalc'
+import PropertyTaxAppeal from './components/PropertyTaxAppeal'
+import LandlordROI from './components/LandlordROI'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -87,6 +90,9 @@ const TABS = [
   { id: 'depreciation',label: 'Depreciation',  icon: '📉' },
   { id: 'lendercomp',  label: 'Lender Compare',icon: '🏦' },
   { id: 'offer',       label: 'Offer Strategy',icon: '📝' },
+  { id: 'hoa',         label: 'HOA Impact',    icon: '🏘' },
+  { id: 'taxappeal',   label: 'Tax Appeal',    icon: '⚖️' },
+  { id: 'landlord',    label: 'Landlord ROI',  icon: '🏠' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -219,6 +225,9 @@ export default function App() {
               {activeTab === 'depreciation'&& <DepreciationCalc />}
               {activeTab === 'lendercomp'  && <LenderCompare />}
               {activeTab === 'offer'       && <OfferCalculator />}
+              {activeTab === 'hoa'         && <HOACalc />}
+              {activeTab === 'taxappeal'   && <PropertyTaxAppeal />}
+              {activeTab === 'landlord'    && <LandlordROI />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
