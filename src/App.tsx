@@ -97,6 +97,7 @@ import CommercialLease from './components/CommercialLease'
 import SelfStorage from './components/SelfStorage'
 import Section8Calc from './components/Section8Calc'
 import ConstructionLoanCalc from './components/ConstructionLoanCalc'
+import TaxLienCalc from './components/TaxLienCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -195,6 +196,7 @@ const TABS = [
   { id: 'selfstorage',   label: 'Self-Storage', icon: '🗄️' },
   { id: 'section8',      label: 'Section 8',    icon: '🏛' },
   { id: 'constructionloan', label: 'Const. Loan', icon: '🏗' },
+  { id: 'taxlien',        label: 'Tax Lien',     icon: '📜' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -381,6 +383,7 @@ export default function App() {
               {activeTab === 'selfstorage'    && <SelfStorage />}
               {activeTab === 'section8'       && <Section8Calc />}
               {activeTab === 'constructionloan' && <ConstructionLoanCalc />}
+              {activeTab === 'taxlien'          && <TaxLienCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
