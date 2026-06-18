@@ -40,6 +40,9 @@ import AppraisalGap from './components/AppraisalGap'
 import WholesaleCalc from './components/WholesaleCalc'
 import PropertyMgmt from './components/PropertyMgmt'
 import MortgagePayoff from './components/MortgagePayoff'
+import DepreciationCalc from './components/DepreciationCalc'
+import LenderCompare from './components/LenderCompare'
+import OfferCalculator from './components/OfferCalculator'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -81,6 +84,9 @@ const TABS = [
   { id: 'wholesale',   label: 'Wholesale',     icon: '🤝' },
   { id: 'propmgmt',    label: 'Prop Mgmt',     icon: '🏢' },
   { id: 'payoff',      label: 'Payoff Planner',icon: '🎯' },
+  { id: 'depreciation',label: 'Depreciation',  icon: '📉' },
+  { id: 'lendercomp',  label: 'Lender Compare',icon: '🏦' },
+  { id: 'offer',       label: 'Offer Strategy',icon: '📝' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -210,6 +216,9 @@ export default function App() {
               {activeTab === 'wholesale'   && <WholesaleCalc />}
               {activeTab === 'propmgmt'    && <PropertyMgmt />}
               {activeTab === 'payoff'      && <MortgagePayoff />}
+              {activeTab === 'depreciation'&& <DepreciationCalc />}
+              {activeTab === 'lendercomp'  && <LenderCompare />}
+              {activeTab === 'offer'       && <OfferCalculator />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
