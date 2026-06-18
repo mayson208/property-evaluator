@@ -99,6 +99,7 @@ import Section8Calc from './components/Section8Calc'
 import ConstructionLoanCalc from './components/ConstructionLoanCalc'
 import TaxLienCalc from './components/TaxLienCalc'
 import RentRollAnalyzer from './components/RentRollAnalyzer'
+import CondoConversion from './components/CondoConversion'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -199,6 +200,7 @@ const TABS = [
   { id: 'constructionloan', label: 'Const. Loan', icon: '🏗' },
   { id: 'taxlien',        label: 'Tax Lien',     icon: '📜' },
   { id: 'rentroll',       label: 'Rent Roll',    icon: '📋' },
+  { id: 'condoconvert',   label: 'Condo Convert', icon: '🏙' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -387,6 +389,7 @@ export default function App() {
               {activeTab === 'constructionloan' && <ConstructionLoanCalc />}
               {activeTab === 'taxlien'          && <TaxLienCalc />}
               {activeTab === 'rentroll'         && <RentRollAnalyzer />}
+              {activeTab === 'condoconvert'     && <CondoConversion />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
