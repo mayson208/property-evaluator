@@ -1,5 +1,5 @@
 import type {
-  PropertyInput, ValuationResult, Comp, Adjustment, Condition, GarageType,
+  PropertyInput, ValuationResult, Adjustment, Condition, GarageType,
 } from '../types'
 import { generateComps } from './comps'
 
@@ -11,6 +11,39 @@ const CONDITION_MULT: Record<Condition, number> = {
   average:   1.00,
   good:      1.07,
   excellent: 1.14,
+}
+
+// ─── Annual property tax rates by state (effective rate %) ───────────────────
+
+export const STATE_TAX_RATE: Record<string, number> = {
+  AL: 0.40, AK: 1.04, AZ: 0.62, AR: 0.63, CA: 0.74, CO: 0.51, CT: 1.73,
+  DE: 0.57, DC: 0.56, FL: 0.86, GA: 0.87, HI: 0.29, ID: 0.69, IL: 2.07,
+  IN: 0.85, IA: 1.43, KS: 1.41, KY: 0.80, LA: 0.55, ME: 1.09, MD: 1.09,
+  MA: 1.12, MI: 1.38, MN: 1.12, MS: 0.80, MO: 0.97, MT: 0.84, NE: 1.54,
+  NV: 0.55, NH: 1.86, NJ: 2.23, NM: 0.67, NY: 1.40, NC: 0.80, ND: 0.98,
+  OH: 1.53, OK: 0.87, OR: 0.97, PA: 1.36, RI: 1.53, SC: 0.55, SD: 1.14,
+  TN: 0.64, TX: 1.60, UT: 0.56, VT: 1.86, VA: 0.87, WA: 0.87, WV: 0.58,
+  WI: 1.51, WY: 0.55,
+}
+
+export function getAnnualPropertyTax(value: number, state: string): number {
+  const rate = STATE_TAX_RATE[state.toUpperCase()] ?? 1.10
+  return Math.round(value * (rate / 100))
+}
+
+// ─── Annual homeowner insurance estimate ──────────────────────────────────────
+
+export function getAnnualInsurance(value: number): number {
+  // Rough rule: ~0.5% of home value per year
+  return Math.round(value * 0.005)
+}
+
+// ─── Annual maintenance estimate ──────────────────────────────────────────────
+
+export function getAnnualMaintenance(value: number, yearBuilt: number): number {
+  const age = new Date().getFullYear() - yearBuilt
+  const rate = age > 30 ? 0.015 : age > 10 ? 0.010 : 0.007
+  return Math.round(value * rate)
 }
 
 // ─── Base price-per-sqft by state (rough market medians) ─────────────────────

@@ -11,6 +11,9 @@ import SavedProperties from './components/SavedProperties'
 import PrintReport from './components/PrintReport'
 import PropertyComparison from './components/PropertyComparison'
 import AppreciationCalc from './components/AppreciationCalc'
+import FlipCalc from './components/FlipCalc'
+import CostOfOwnership from './components/CostOfOwnership'
+import RentVsBuy from './components/RentVsBuy'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -21,9 +24,12 @@ const TABS = [
   { id: 'appreciation',  label: 'History',      icon: '📅' },
   { id: 'renovation',    label: 'Renovation',   icon: '🔨' },
   { id: 'investment',    label: 'Investment',   icon: '💰' },
+  { id: 'flip',          label: 'Flip',         icon: '🔄' },
+  { id: 'costs',         label: 'Ownership',    icon: '💸' },
+  { id: 'rentvsbuy',     label: 'Rent vs Buy',  icon: '⚖️' },
   { id: 'neighborhood',  label: 'Area',         icon: '📍' },
   { id: 'mortgage',      label: 'Mortgage',     icon: '🏦' },
-  { id: 'compare',       label: 'Compare',      icon: '⚖️' },
+  { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
 ]
@@ -120,6 +126,9 @@ export default function App() {
               {activeTab === 'market'       && <MarketTrends />}
               {activeTab === 'renovation'   && <RenovationCalc />}
               {activeTab === 'investment'   && <InvestmentAnalysis />}
+              {activeTab === 'flip'         && <FlipCalc />}
+              {activeTab === 'costs'        && <CostOfOwnership />}
+              {activeTab === 'rentvsbuy'    && <RentVsBuy />}
               {activeTab === 'neighborhood' && <NeighborhoodScore />}
               {activeTab === 'mortgage'     && <MortgageCalc />}
               {activeTab === 'appreciation' && <AppreciationCalc />}

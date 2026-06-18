@@ -40,11 +40,39 @@ const DEFAULT_RENOVATIONS: RenovationItem[] = [
   { id: 'solar',     name: 'Solar Panels',          cost: 20000,  valueAdd: 18000,  roi: -10 },
 ]
 
+const DEMO_PROPERTIES: PropertyInput[] = [
+  {
+    address: '4821 Barton Creek Blvd', city: 'Austin', state: 'TX', zip: '78735',
+    propertyType: 'single_family', sqft: 2400, lotSqft: 8500, bedrooms: 4, bathrooms: 2.5,
+    yearBuilt: 2008, condition: 'good', garage: '2_car', hasPool: true, hasBasement: false,
+    basementSqft: 0, hasFireplace: true, stories: 2, purchasePrice: 385000, purchaseYear: 2018,
+  },
+  {
+    address: '2210 W Sunset Blvd', city: 'Los Angeles', state: 'CA', zip: '90026',
+    propertyType: 'single_family', sqft: 1850, lotSqft: 6200, bedrooms: 3, bathrooms: 2,
+    yearBuilt: 1965, condition: 'average', garage: '1_car', hasPool: false, hasBasement: false,
+    basementSqft: 0, hasFireplace: true, stories: 1, purchasePrice: 780000, purchaseYear: 2020,
+  },
+  {
+    address: '18 Harbor View Dr', city: 'Seattle', state: 'WA', zip: '98101',
+    propertyType: 'condo', sqft: 1100, lotSqft: 0, bedrooms: 2, bathrooms: 2,
+    yearBuilt: 2015, condition: 'excellent', garage: '1_car', hasPool: false, hasBasement: false,
+    basementSqft: 0, hasFireplace: false, stories: 1, purchasePrice: 510000, purchaseYear: 2021,
+  },
+  {
+    address: '543 Magnolia St', city: 'Nashville', state: 'TN', zip: '37203',
+    propertyType: 'townhouse', sqft: 1750, lotSqft: 2200, bedrooms: 3, bathrooms: 2.5,
+    yearBuilt: 2019, condition: 'excellent', garage: '1_car', hasPool: false, hasBasement: false,
+    basementSqft: 0, hasFireplace: false, stories: 3, purchasePrice: 420000, purchaseYear: 2022,
+  },
+]
+
 interface PropertyStore {
   // Input
   input: PropertyInput
   setInput: (patch: Partial<PropertyInput>) => void
   resetInput: () => void
+  loadDemo: (index?: number) => void
 
   // Result
   result: ValuationResult | null
@@ -92,6 +120,11 @@ export const usePropertyStore = create<PropertyStore>()(
 
       setInput: (patch) => set(s => ({ input: { ...s.input, ...patch } })),
       resetInput: () => set({ input: DEFAULT_INPUT, result: null }),
+      loadDemo: (index) => {
+        const i = index !== undefined ? index : Math.floor(Math.random() * DEMO_PROPERTIES.length)
+        set({ input: DEMO_PROPERTIES[i], result: null })
+        setTimeout(() => usePropertyStore.getState().calculate(), 50)
+      },
 
       calculate: () => {
         const { input } = get()

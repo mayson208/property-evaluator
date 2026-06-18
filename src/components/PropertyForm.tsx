@@ -52,7 +52,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 }
 
 export default function PropertyForm() {
-  const { input, setInput, calculate, isCalculating, resetInput } = usePropertyStore()
+  const { input, setInput, calculate, isCalculating, resetInput, loadDemo } = usePropertyStore()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -275,11 +275,11 @@ export default function PropertyForm() {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-2">
+      <div className="space-y-2 pt-2">
         <button
           type="submit"
           disabled={!input.sqft || isCalculating}
-          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
         >
           {isCalculating ? (
             <>
@@ -288,13 +288,22 @@ export default function PropertyForm() {
             </>
           ) : '🏠 Estimate Value'}
         </button>
-        <button
-          type="button"
-          onClick={resetInput}
-          className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-xl transition text-sm"
-        >
-          Reset
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => loadDemo()}
+            className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl transition text-xs font-semibold"
+          >
+            ✨ Load Demo
+          </button>
+          <button
+            type="button"
+            onClick={resetInput}
+            className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-500 rounded-xl transition text-xs font-semibold"
+          >
+            Reset
+          </button>
+        </div>
       </div>
     </form>
   )
