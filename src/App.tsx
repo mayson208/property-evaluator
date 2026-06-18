@@ -21,6 +21,8 @@ import CapGainsTax from './components/CapGainsTax'
 import StressTest from './components/StressTest'
 import AffordabilityCalc from './components/AffordabilityCalc'
 import EquityGrowth from './components/EquityGrowth'
+import TaxBenefits from './components/TaxBenefits'
+import RefinanceCalc from './components/RefinanceCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -43,6 +45,8 @@ const TABS = [
   { id: 'stress',        label: 'Stress Test',  icon: '⚡' },
   { id: 'affordability', label: 'Affordability', icon: '💡' },
   { id: 'equity',        label: 'Equity',        icon: '📈' },
+  { id: 'taxbenefits',  label: 'Tax Benefits',  icon: '🏛' },
+  { id: 'refinance',    label: 'Refinance',     icon: '🔁' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -153,6 +157,8 @@ export default function App() {
               {activeTab === 'stress'       && <StressTest />}
               {activeTab === 'affordability' && <AffordabilityCalc />}
               {activeTab === 'equity'        && <EquityGrowth />}
+              {activeTab === 'taxbenefits'  && <TaxBenefits />}
+              {activeTab === 'refinance'    && <RefinanceCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
