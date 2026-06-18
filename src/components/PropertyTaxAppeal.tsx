@@ -1,240 +1,319 @@
 import { useState, useMemo } from 'react'
-import { usePropertyStore } from '../store/usePropertyStore'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, LineChart, Line, ReferenceLine } from 'recharts'
 
-function fmt(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+type AppealType = 'diy' | 'consultant' | 'attorney'
+
+interface Comp {
+  id: string
+  address: string
+  salePrice: number
+  sqft: number
+  saleYear: number
 }
 
-// Approximate property tax rates by state (effective rates as %)
-const STATE_TAX_RATES: Record<string, number> = {
-  AL: 0.41, AK: 1.19, AZ: 0.62, AR: 0.61, CA: 0.75, CO: 0.51, CT: 2.14,
-  DE: 0.57, FL: 0.89, GA: 0.92, HI: 0.32, ID: 0.69, IL: 2.27, IN: 0.85,
-  IA: 1.57, KS: 1.41, KY: 0.86, LA: 0.55, ME: 1.36, MD: 1.09, MA: 1.23,
-  MI: 1.54, MN: 1.12, MS: 0.65, MO: 0.97, MT: 0.84, NE: 1.73, NV: 0.55,
-  NH: 2.18, NJ: 2.49, NM: 0.80, NY: 1.72, NC: 0.82, ND: 0.98, OH: 1.59,
-  OK: 0.90, OR: 0.97, PA: 1.58, RI: 1.63, SC: 0.57, SD: 1.31, TN: 0.71,
-  TX: 1.80, UT: 0.58, VT: 1.90, VA: 0.82, WA: 0.98, WV: 0.59, WI: 1.85, WY: 0.61,
+interface Inputs {
+  assessedValue: number
+  taxRate: number
+  targetAssessment: number
+  appealType: AppealType
+  consultantPct: number
+  filingFee: number
+  timeInvestedHours: number
+  hourlyValue: number
+  comps: Comp[]
 }
 
-const APPEAL_STEPS = [
-  { step: 1, title: 'Review Assessment Notice', desc: 'Check the assessed value vs. market value, note the appeal deadline (typically 30–90 days from notice).', effort: 'Low', cost: '$0' },
-  { step: 2, title: 'Gather Comparable Sales', desc: 'Find 3–5 recent sales of similar homes in your area that closed lower than your assessed value. Use MLS, Zillow, or county records.', effort: 'Medium', cost: '$0–$100' },
-  { step: 3, title: 'Request Property Record Card', desc: 'Get the assessor\'s property card to check for errors: wrong sq ft, bedroom count, lot size, or condition grade.', effort: 'Low', cost: '$0' },
-  { step: 4, title: 'File Informal Appeal', desc: 'Meet with the assessor informally first — many errors are fixed without a formal hearing. Bring your comps and any photos.', effort: 'Low', cost: '$0' },
-  { step: 5, title: 'Formal Hearing (if needed)', desc: 'File a formal appeal with the county board of equalization or review board. Present your evidence and comparable sales.', effort: 'High', cost: '$0–$300' },
-  { step: 6, title: 'Hire a Tax Consultant', desc: 'For high-value properties or complex cases, a property tax consultant takes 25–40% of the first-year savings as their fee.', effort: 'Low (delegated)', cost: '25–40% of savings' },
-]
+const DEF: Inputs = {
+  assessedValue: 485000,
+  taxRate: 1.25,
+  targetAssessment: 390000,
+  appealType: 'diy',
+  consultantPct: 35,
+  filingFee: 150,
+  timeInvestedHours: 8,
+  hourlyValue: 75,
+  comps: [
+    { id: '1', address: '101 Maple St', salePrice: 375000, sqft: 2100, saleYear: 2024 },
+    { id: '2', address: '204 Elm Ave', salePrice: 405000, sqft: 2350, saleYear: 2024 },
+    { id: '3', address: '318 Oak Dr', salePrice: 362000, sqft: 2050, saleYear: 2025 },
+  ],
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+const N = (v: string) => parseFloat(v) || 0
+let nextCompId = 4
 
 export default function PropertyTaxAppeal() {
-  const { result, input } = usePropertyStore()
+  const [inp, setInp] = useState<Inputs>(DEF)
+  const set = (k: keyof Inputs, v: string | AppealType) =>
+    setInp(p => ({ ...p, [k]: typeof DEF[k] === 'number' ? N(v as string) : v }))
 
-  const stateKey = (input.state ?? 'TX') as keyof typeof STATE_TAX_RATES
-  const marketValue = result?.estimatedValue ?? 400000
-  const defaultRate = STATE_TAX_RATES[stateKey] ?? 1.2
+  const updateComp = (id: string, k: keyof Comp, v: string) =>
+    setInp(p => ({ ...p, comps: p.comps.map(c => c.id === id ? { ...c, [k]: typeof c[k] === 'number' ? N(v) : v } : c) }))
 
-  const [assessedValue,    setAssessedValue]    = useState(marketValue)
-  const [targetAssessment, setTargetAssessment] = useState(Math.round(marketValue * 0.90))
-  const [taxRatePct,       setTaxRatePct]       = useState(defaultRate)
-  const [homesteadExempt,  setHomesteadExempt]  = useState(25000)
-  const [seniorExempt,     setSeniorExempt]     = useState(0)
-  const [veteranExempt,    setVeteranExempt]    = useState(0)
-  const [consultantPct,    setConsultantPct]    = useState(30)
-  const [checkedSteps,     setCheckedSteps]     = useState<number[]>([])
+  const calc = useMemo(() => {
+    const { assessedValue, taxRate, targetAssessment, appealType, consultantPct, filingFee, timeInvestedHours, hourlyValue, comps } = inp
 
-  const analysis = useMemo(() => {
-    const totalExempt     = homesteadExempt + seniorExempt + veteranExempt
-    const taxableBase     = Math.max(0, assessedValue - totalExempt)
-    const targetBase      = Math.max(0, targetAssessment - totalExempt)
+    const currentTax = assessedValue * taxRate / 100
+    const targetTax = targetAssessment * taxRate / 100
+    const annualSavings = currentTax - targetTax
+    const reductionPct = assessedValue > 0 ? (assessedValue - targetAssessment) / assessedValue * 100 : 0
 
-    const currentTaxAnnual = taxableBase * taxRatePct / 100
-    const targetTaxAnnual  = targetBase  * taxRatePct / 100
-    const annualSavings    = currentTaxAnnual - targetTaxAnnual
-    const monthlySavings   = annualSavings / 12
+    const compImpliedValue = comps.length > 0 ? comps.reduce((s, c) => s + c.salePrice, 0) / comps.length : 0
+    const avgCompPSF = comps.length > 0 ? comps.reduce((s, c) => s + c.salePrice / c.sqft, 0) / comps.length : 0
+    const equityRatio = compImpliedValue > 0 ? assessedValue / compImpliedValue * 100 : 100
+    const overAssessedBy = Math.max(0, assessedValue - compImpliedValue)
 
-    const pctReduction     = assessedValue > 0 ? ((assessedValue - targetAssessment) / assessedValue) * 100 : 0
-    const marketGap        = assessedValue - marketValue  // positive = over-assessed
-    const overAssessedPct  = marketValue > 0 ? (marketGap / marketValue) * 100 : 0
+    const diyTimeCost = timeInvestedHours * hourlyValue
+    const totalDiyCost = filingFee + diyTimeCost
+    const contingencyFee = annualSavings * consultantPct / 100
+    const consultantCost = filingFee + contingencyFee
+    const attorneyCost = filingFee + Math.min(annualSavings * 0.5, 3000)
 
-    const yr5Savings       = annualSavings * 5
-    const consultantFee    = annualSavings * consultantPct / 100
+    const appealCost = appealType === 'diy' ? totalDiyCost : appealType === 'consultant' ? consultantCost : attorneyCost
+    const netFirstYearSavings = annualSavings - appealCost
+    const breakEvenMonths = appealCost > 0 && annualSavings > 0 ? appealCost / (annualSavings / 12) : 0
 
-    // Comps needed to prove case
-    const compsNeeded = Math.ceil(3 + (pctReduction > 10 ? 2 : 0))
+    const successRateByType: Record<AppealType, number> = { diy: 45, consultant: 65, attorney: 75 }
+    const successRate = successRateByType[appealType]
+    const expectedValueSavings = annualSavings * successRate / 100
 
-    // Success probability (rough heuristic)
-    const successOdds =
-      overAssessedPct > 15 ? 80 :
-      overAssessedPct > 10 ? 65 :
-      overAssessedPct >  5 ? 45 :
-      overAssessedPct >  0 ? 25 : 5
+    const yearlyData = Array.from({ length: 10 }, (_, i) => {
+      const y = i + 1
+      const cumSavings = Array.from({ length: y }, (__, j) => {
+        const bt = assessedValue * Math.pow(1.02, j) * taxRate / 100
+        const dt = targetAssessment * Math.pow(1.02, j) * taxRate / 100
+        return bt - dt
+      }).reduce((a, b) => a + b, 0) - (y === 1 ? appealCost : 0)
+      const yearlySavings = assessedValue * Math.pow(1.02, y - 1) * taxRate / 100 - targetAssessment * Math.pow(1.02, y - 1) * taxRate / 100
+      return { year: `Yr ${y}`, savings: Math.round(yearlySavings), cumulative: Math.round(cumSavings) }
+    })
 
-    // Bar chart data: assessed vs market vs target
-    const barData = [
-      { name: 'Market Value',     value: Math.round(marketValue), color: '#3b82f6' },
-      { name: 'Assessed (now)',   value: Math.round(assessedValue), color: '#ef4444' },
-      { name: 'Target Appeal',    value: Math.round(targetAssessment), color: '#22c55e' },
+    const roi10yr = appealCost > 0 && yearlyData[9].cumulative > 0 ? yearlyData[9].cumulative / appealCost * 100 : 0
+
+    const scenarios = [
+      { label: 'No Reduction', annualSavings: 0, netSavings: -appealCost },
+      { label: 'Partial (50%)', annualSavings: annualSavings * 0.5, netSavings: annualSavings * 0.5 - appealCost },
+      { label: 'Full Reduction', annualSavings, netSavings: netFirstYearSavings },
     ]
 
-    return { taxableBase, targetBase, currentTaxAnnual, targetTaxAnnual, annualSavings, monthlySavings,
-             pctReduction, marketGap, overAssessedPct, yr5Savings, consultantFee, compsNeeded, successOdds, barData }
-  }, [assessedValue, targetAssessment, taxRatePct, homesteadExempt, seniorExempt, veteranExempt, consultantPct, marketValue])
+    return {
+      currentTax, targetTax, annualSavings, reductionPct,
+      compImpliedValue, avgCompPSF, equityRatio, overAssessedBy,
+      diyTimeCost, totalDiyCost, consultantCost, contingencyFee, attorneyCost, appealCost,
+      netFirstYearSavings, breakEvenMonths,
+      yearlyData, successRate, expectedValueSavings, roi10yr, scenarios,
+    }
+  }, [inp])
 
-  const toggleStep = (n: number) => {
-    setCheckedSteps(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])
-  }
+  const field = (label: string, key: keyof Inputs, suffix = '', prefix = '') => (
+    <div>
+      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <div className="relative">
+        {prefix && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{prefix}</span>}
+        <input type="number" value={inp[key] as number} onChange={e => set(key, e.target.value)}
+          className={`w-full bg-slate-800 border border-slate-700 rounded-lg py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 ${prefix ? 'pl-5 pr-3' : suffix ? 'pl-3 pr-8' : 'px-3'}`} />
+        {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs">{suffix}</span>}
+      </div>
+    </div>
+  )
+
+  const overAssessed = calc.equityRatio > 105
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-sm">
       <div>
-        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-1">Property Tax Appeal</h3>
-        <p className="text-xs text-slate-500">
-          Estimate your potential tax savings from appealing your assessed value,
-          model exemptions, and follow the step-by-step appeal process.
-        </p>
+        <h2 className="text-lg font-bold text-white">Property Tax Appeal Analyzer</h2>
+        <p className="text-slate-400 text-xs mt-1">Assessment reduction ROI, comp-based market value, break-even analysis, 10-year cumulative savings by appeal strategy</p>
       </div>
 
-      {/* Over-assessment alert */}
-      {analysis.overAssessedPct > 5 && (
-        <div className="bg-yellow-900/20 border border-yellow-700/40 rounded-xl p-4">
-          <p className="text-sm font-bold text-yellow-400 mb-1">
-            ⚠️ Potentially Over-Assessed by {analysis.overAssessedPct.toFixed(1)}%
-          </p>
-          <p className="text-xs text-slate-400">
-            Your assessed value ({fmt(assessedValue)}) is{' '}
-            <strong className="text-white">{fmt(analysis.marketGap)}</strong> above the estimated market value ({fmt(marketValue)}).
-            Estimated appeal success probability: <strong className="text-yellow-300">{analysis.successOdds}%</strong>.
-          </p>
-        </div>
-      )}
-      {analysis.overAssessedPct <= 0 && (
-        <div className="bg-green-900/20 border border-green-700/40 rounded-xl p-3 text-center text-xs text-green-400">
-          Your assessed value appears to be at or below market — appeal may be difficult to win.
-        </div>
-      )}
-
-      {/* Key savings stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Current Annual Tax', value: fmt(analysis.currentTaxAnnual), color: 'text-red-400' },
-          { label: 'After Appeal',        value: fmt(analysis.targetTaxAnnual),  color: 'text-green-400' },
-          { label: 'Annual Savings',      value: fmt(analysis.annualSavings),    color: 'text-white' },
-          { label: '5-Year Savings',      value: fmt(analysis.yr5Savings),       color: 'text-blue-400' },
-        ].map(s => (
-          <div key={s.label} className="bg-slate-800/50 rounded-xl p-3 border border-slate-700 text-center">
-            <p className="text-xs text-slate-500 mb-1">{s.label}</p>
-            <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
+      <div className={`rounded-xl p-4 border ${overAssessed ? 'bg-red-900/20 border-red-700/40' : 'bg-green-900/20 border-green-700/40'}`}>
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{overAssessed ? '⚠️' : '✅'}</span>
+          <div>
+            <p className={`font-bold ${overAssessed ? 'text-red-300' : 'text-green-300'}`}>
+              {overAssessed
+                ? `Over-Assessed by ~${fmt(calc.overAssessedBy)} (${(calc.equityRatio - 100).toFixed(1)}% above comp market value)`
+                : `Assessment appears fair — equity ratio ${calc.equityRatio.toFixed(1)}%`}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Comp-implied value: {fmt(calc.compImpliedValue)} · Assessed: {fmt(inp.assessedValue)} · Equity ratio {calc.equityRatio.toFixed(1)}% {overAssessed ? '(>105% = strong appeal basis)' : '(≤105% = uphill battle)'}
+            </p>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Assessment Details</p>
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Assessment Details</p>
+          {field('Current Assessed Value', 'assessedValue', '', '$')}
+          {field('Property Tax Rate', 'taxRate', '%')}
+          {field('Target Assessment (your ask)', 'targetAssessment', '', '$')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Current Annual Tax</span><span className="text-red-400 font-bold">{fmt(calc.currentTax)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Target Annual Tax</span><span className="text-green-400 font-bold">{fmt(calc.targetTax)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Annual Savings (if won)</span><span className="text-blue-400 font-bold">{fmt(calc.annualSavings)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Reduction %</span><span className="text-white">{calc.reductionPct.toFixed(1)}%</span></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Appeal Strategy</p>
+          <div className="space-y-1.5">
+            {([['diy', 'DIY (Self-Represent)', '~45% success, low cost'], ['consultant', 'Tax Consultant (contingency)', '~65% success, no upfront'], ['attorney', 'Property Tax Attorney', '~75% success, strongest case']] as const).map(([v, label, sub]) => (
+              <label key={v} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition ${inp.appealType === v ? 'border-blue-500 bg-blue-900/20' : 'border-slate-700 hover:border-slate-600'}`}>
+                <input type="radio" name="appeal" value={v} checked={inp.appealType === v} onChange={() => set('appealType', v)} className="text-blue-500" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-200">{label}</p>
+                  <p className="text-xs text-slate-500">{sub}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          {field('Filing Fee', 'filingFee', '', '$')}
+          {inp.appealType === 'diy' && (
+            <div className="grid grid-cols-2 gap-2">
+              {field('Time (hrs)', 'timeInvestedHours', 'hrs')}
+              {field('Hourly Value', 'hourlyValue', '', '$')}
+            </div>
+          )}
+          {inp.appealType === 'consultant' && field('Contingency % of Annual Savings', 'consultantPct', '%')}
+          <div className="p-2 bg-slate-900/50 rounded-lg text-xs space-y-1">
+            <div className="flex justify-between"><span className="text-slate-400">Total Appeal Cost</span><span className="text-orange-400 font-bold">{fmt(calc.appealCost)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Success Rate (typical)</span><span className="text-blue-400">{calc.successRate}%</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">Expected Value / yr</span><span className="text-green-400">{fmt(calc.expectedValueSavings)}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Appeal ROI</p>
           {[
-            { label: 'Current Assessed Value',  value: assessedValue,    min: 50000, max: 5000000, step: 5000,  set: setAssessedValue,    fmt: fmt },
-            { label: 'Target Appeal Value',     value: targetAssessment, min: 50000, max: assessedValue, step: 5000, set: setTargetAssessment, fmt: (v: number) => `${fmt(v)} (−${((1 - v/assessedValue)*100).toFixed(1)}%)` },
-            { label: 'Tax Rate (effective %)',  value: taxRatePct,       min: 0.1,   max: 4.0,    step: 0.05,  set: setTaxRatePct,       fmt: (v: number) => `${v.toFixed(2)}%` },
-          ].map(s => (
-            <div key={s.label}>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">{s.label}</label>
-                <span className="text-xs font-bold text-blue-400">{s.fmt(s.value)}</span>
-              </div>
-              <input type="range" min={s.min} max={s.max} step={s.step} value={s.value}
-                onChange={e => s.set(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-500" />
+            { label: 'Net Yr 1 Savings (if won)', value: fmt(calc.netFirstYearSavings), color: calc.netFirstYearSavings > 0 ? 'text-green-400' : 'text-red-400' },
+            { label: 'Break-Even', value: calc.breakEvenMonths > 0 ? `${calc.breakEvenMonths.toFixed(1)} months` : 'N/A', color: 'text-blue-400' },
+            { label: '10-Year Cumulative', value: fmt(calc.yearlyData[9]?.cumulative ?? 0), color: 'text-purple-400' },
+            { label: '10-Year ROI on Cost', value: `${calc.roi10yr.toFixed(0)}%`, color: 'text-white' },
+          ].map(m => (
+            <div key={m.label} className="flex justify-between items-center p-2 bg-slate-900/50 rounded-lg">
+              <span className="text-xs text-slate-400">{m.label}</span>
+              <span className={`text-sm font-bold ${m.color}`}>{m.value}</span>
             </div>
           ))}
-
-          <div className="bg-slate-900/60 rounded-lg p-3 space-y-1 text-xs">
-            <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-2">Exemptions</p>
+          <div className="p-3 rounded-lg border border-slate-700 bg-slate-900/50 text-xs space-y-0.5">
+            <p className="font-bold text-slate-300 mb-1">Case Strength Checklist</p>
             {[
-              { label: 'Homestead Exemption', value: homesteadExempt, set: setHomesteadExempt, max: 100000 },
-              { label: 'Senior Exemption',    value: seniorExempt,    set: setSeniorExempt,    max: 100000 },
-              { label: 'Veteran Exemption',   value: veteranExempt,   set: setVeteranExempt,   max: 100000 },
-            ].map(e => (
-              <div key={e.label} className="flex items-center gap-2">
-                <span className="text-slate-400 w-32 flex-shrink-0">{e.label}</span>
-                <input type="number" value={e.value} onChange={ev => e.set(Number(ev.target.value))}
-                  min={0} max={e.max} step={1000}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200" />
-              </div>
-            ))}
-            <div className="flex justify-between pt-1 border-t border-slate-700">
-              <span className="text-slate-400">Taxable base after exemptions</span>
-              <span className="text-white font-bold">{fmt(analysis.taxableBase)}</span>
-            </div>
+              { pass: overAssessed, text: `Equity ratio ${calc.equityRatio.toFixed(1)}% — ${overAssessed ? '>105% ✓' : '≤105% ✗'}` },
+              { pass: calc.overAssessedBy > 20000, text: `Gap ${fmt(calc.overAssessedBy)} — ${calc.overAssessedBy > 20000 ? '>$20k ✓' : 'small ✗'}` },
+              { pass: inp.comps.length >= 3, text: `${inp.comps.length} comp${inp.comps.length !== 1 ? 's' : ''} — ${inp.comps.length >= 3 ? '3+ ideal ✓' : 'need more ✗'}` },
+              { pass: calc.annualSavings > calc.appealCost, text: `Savings > cost — ${calc.annualSavings > calc.appealCost ? '✓' : '✗'}` },
+            ].map((c, i) => <p key={i} className={c.pass ? 'text-green-400' : 'text-slate-500'}>{c.text}</p>)}
           </div>
         </div>
+      </div>
 
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700 space-y-4">
-          <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Assessed vs Market vs Target</p>
+      {/* Comps */}
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Comparable Sales (Evidence for Appeal)</p>
+          <button onClick={() => setInp(p => ({ ...p, comps: [...p.comps, { id: String(nextCompId++), address: 'New Comp', salePrice: 350000, sqft: 2000, saleYear: 2025 }] }))}
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">+ Add</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="text-slate-500 border-b border-slate-700">
+              <th className="text-left py-2 px-2">Address</th>
+              <th className="text-right py-2 px-2">Sale Price</th>
+              <th className="text-right py-2 px-2">Sqft</th>
+              <th className="text-right py-2 px-2">$/sqft</th>
+              <th className="text-right py-2 px-2">Year</th>
+              <th className="py-2 px-2"></th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {inp.comps.map(c => (
+                <tr key={c.id} className="text-slate-300">
+                  <td className="py-1.5 px-2">
+                    <input value={c.address} onChange={e => updateComp(c.id, 'address', e.target.value)}
+                      className="bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none w-full" />
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <input type="number" value={c.salePrice} onChange={e => updateComp(c.id, 'salePrice', e.target.value)}
+                      className="bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none w-full text-right" />
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <input type="number" value={c.sqft} onChange={e => updateComp(c.id, 'sqft', e.target.value)}
+                      className="bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none w-full text-right" />
+                  </td>
+                  <td className="text-right py-1.5 px-2 text-blue-400">${c.sqft > 0 ? (c.salePrice / c.sqft).toFixed(0) : 0}</td>
+                  <td className="py-1.5 px-2">
+                    <input type="number" value={c.saleYear} onChange={e => updateComp(c.id, 'saleYear', e.target.value)}
+                      className="bg-transparent border-b border-slate-700 focus:border-blue-500 outline-none w-full text-right" />
+                  </td>
+                  <td className="py-1.5 px-2">
+                    <button onClick={() => setInp(p => ({ ...p, comps: p.comps.filter(x => x.id !== c.id) }))} className="text-slate-600 hover:text-red-400">✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-600 font-bold">
+                <td className="py-2 px-2 text-slate-300">Avg / Implied Market Value</td>
+                <td className="text-right py-2 px-2 text-white">{fmt(calc.compImpliedValue)}</td>
+                <td></td>
+                <td className="text-right py-2 px-2 text-blue-400">${calc.avgCompPSF.toFixed(0)}/sqft</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">Outcome Scenarios (Year 1)</p>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={analysis.barData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 9 }} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false}
-                tickFormatter={v => `$${(v / 1000).toFixed(0)}K`} width={55} />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8 }}
-                formatter={(v: number) => [fmt(v)]} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {analysis.barData.map((d, i) => <Cell key={i} fill={d.color} />)}
-              </Bar>
+            <BarChart data={calc.scenarios}>
+              <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} />
+              <YAxis tickFormatter={v => `$${Math.abs(v)}`} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+              <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="annualSavings" name="Annual Tax Savings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="netSavings" name="Net Yr-1 (after costs)" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
 
-          <div className="space-y-2">
-            <div>
-              <div className="flex justify-between mb-1">
-                <label className="text-xs text-slate-400 uppercase tracking-widest">Consultant Fee Split</label>
-                <span className="text-xs font-bold text-purple-400">{consultantPct}% of savings</span>
-              </div>
-              <input type="range" min={20} max={50} step={5} value={consultantPct}
-                onChange={e => setConsultantPct(Number(e.target.value))}
-                className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-purple-500" />
-            </div>
-            <div className="bg-slate-900/60 rounded-lg p-3 space-y-1 text-xs">
-              <div className="flex justify-between"><span className="text-slate-500">Your net savings/yr (DIY)</span><span className="text-green-400 font-bold">{fmt(analysis.annualSavings)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Consultant fee (Yr 1)</span><span className="text-yellow-400">{fmt(analysis.consultantFee)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Your net savings/yr (w/ consultant)</span><span className="text-green-400 font-bold">{fmt(analysis.annualSavings - analysis.consultantFee)}</span></div>
-            </div>
-          </div>
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+          <p className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3">10-Year Cumulative Savings</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={calc.yearlyData}>
+              <XAxis dataKey="year" tick={{ fill: '#64748b', fontSize: 10 }} />
+              <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#64748b', fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <ReferenceLine y={0} stroke="#475569" strokeDasharray="3 3" />
+              <Line type="monotone" dataKey="cumulative" stroke="#22c55e" strokeWidth={2} dot={false} name="Cumulative Net" />
+              <Line type="monotone" dataKey="savings" stroke="#3b82f6" strokeWidth={2} dot={false} name="Annual Savings" strokeDasharray="4 2" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Step-by-step appeal process */}
-      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-        <p className="text-xs text-slate-400 uppercase tracking-widest mb-3 font-bold">
-          Appeal Checklist ({checkedSteps.length}/{APPEAL_STEPS.length} complete)
-        </p>
-        <div className="w-full h-1.5 bg-slate-700 rounded-full mb-4 overflow-hidden">
-          <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${(checkedSteps.length / APPEAL_STEPS.length) * 100}%` }} />
-        </div>
-        <div className="space-y-3">
-          {APPEAL_STEPS.map(s => (
-            <div key={s.step} className={`flex gap-3 p-3 rounded-xl border cursor-pointer transition ${checkedSteps.includes(s.step) ? 'bg-green-900/20 border-green-800/50' : 'bg-slate-900/40 border-slate-700 hover:bg-slate-700/30'}`}
-              onClick={() => toggleStep(s.step)}>
-              <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-black mt-0.5 ${checkedSteps.includes(s.step) ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
-                {checkedSteps.includes(s.step) ? '✓' : s.step}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-xs font-bold text-slate-200">{s.title}</p>
-                  <span className="text-xs text-slate-500">{s.cost}</span>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
-              </div>
-            </div>
-          ))}
+      <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tax Appeal — Quick Guide</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-400">
+          {[
+            '📅 Deadlines: typically 30-90 days after assessment notice — missing it means waiting a full year',
+            '📊 Equity argument: if neighbors are assessed at a lower rate per value, use uniformity / equal treatment angle',
+            '🏠 Market value argument: the strongest case — comps below your assessed value from the past 12-18 months',
+            '📷 Condition evidence: photos of deferred maintenance or defects the assessor may have missed',
+            '🤝 Informal hearing: many counties offer this first — often faster and cheaper than formal ARB/BOE',
+            '⚖️ Formal hearing (ARB/BOE): requires filing, evidence packets, sometimes sworn testimony',
+            '💰 Contingency firms: pay nothing if they lose; they take 25-40% of first-year savings if they win',
+            '🔁 Annual reviews: successful appeals typically reset for 1-3 years — calendar re-file after reassessment',
+          ].map((t, i) => <p key={i}>{t}</p>)}
         </div>
       </div>
-
-      <p className="text-xs text-slate-600 text-center">
-        Property tax appeal deadlines vary by county — typically 30–90 days from your assessment notice.
-        State effective tax rates are approximate; check your county assessor for exact rates and exemptions.
-      </p>
     </div>
   )
 }
