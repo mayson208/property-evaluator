@@ -82,6 +82,7 @@ import EvictionCostCalc from './components/EvictionCostCalc'
 import SubdivisionCalc from './components/SubdivisionCalc'
 import DSTCalc from './components/DSTCalc'
 import InstallmentSaleCalc from './components/InstallmentSaleCalc'
+import QBIDeduction from './components/QBIDeduction'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -165,6 +166,7 @@ const TABS = [
   { id: 'subdivision',  label: 'Subdivision',   icon: '🗺️' },
   { id: 'dst',          label: 'DST / 1031',    icon: '🏛' },
   { id: 'installsale',  label: 'Install. Sale', icon: '📑' },
+  { id: 'qbi',          label: 'QBI §199A',     icon: '💰' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -336,6 +338,7 @@ export default function App() {
               {activeTab === 'subdivision' && <SubdivisionCalc />}
               {activeTab === 'dst'         && <DSTCalc />}
               {activeTab === 'installsale' && <InstallmentSaleCalc />}
+              {activeTab === 'qbi'         && <QBIDeduction />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
