@@ -10,22 +10,35 @@ import MortgageCalc from './components/MortgageCalc'
 import SavedProperties from './components/SavedProperties'
 import PrintReport from './components/PrintReport'
 import PropertyComparison from './components/PropertyComparison'
+import AppreciationCalc from './components/AppreciationCalc'
+import { buildShareUrl } from './utils/share'
+import { useState } from 'react'
 
 const TABS = [
-  { id: 'valuation',    label: 'Valuation',    icon: '🏠' },
-  { id: 'comps',        label: 'Comps',        icon: '🏘' },
-  { id: 'market',       label: 'Market',       icon: '📈' },
-  { id: 'renovation',   label: 'Renovation',   icon: '🔨' },
-  { id: 'investment',   label: 'Investment',   icon: '💰' },
-  { id: 'neighborhood', label: 'Area',         icon: '📍' },
-  { id: 'mortgage',     label: 'Mortgage',     icon: '🏦' },
-  { id: 'compare',      label: 'Compare',      icon: '⚖️' },
-  { id: 'saved',        label: 'Saved',        icon: '💾' },
-  { id: 'report',       label: 'Report',       icon: '🖨' },
+  { id: 'valuation',     label: 'Valuation',    icon: '🏠' },
+  { id: 'comps',         label: 'Comps',        icon: '🏘' },
+  { id: 'market',        label: 'Market',       icon: '📈' },
+  { id: 'appreciation',  label: 'History',      icon: '📅' },
+  { id: 'renovation',    label: 'Renovation',   icon: '🔨' },
+  { id: 'investment',    label: 'Investment',   icon: '💰' },
+  { id: 'neighborhood',  label: 'Area',         icon: '📍' },
+  { id: 'mortgage',      label: 'Mortgage',     icon: '🏦' },
+  { id: 'compare',       label: 'Compare',      icon: '⚖️' },
+  { id: 'saved',         label: 'Saved',        icon: '💾' },
+  { id: 'report',        label: 'Report',       icon: '🖨' },
 ]
 
 export default function App() {
-  const { activeTab, setActiveTab, result, savedProperties } = usePropertyStore()
+  const { activeTab, setActiveTab, result, savedProperties, input } = usePropertyStore()
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = () => {
+    const url = buildShareUrl(input)
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -39,7 +52,7 @@ export default function App() {
               <span className="text-slate-500 text-xs ml-2 hidden sm:inline">Property Value Evaluator</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs">
             {result && (
               <span className="bg-green-900/40 border border-green-700/50 text-green-400 px-2 py-1 rounded-full font-semibold">
                 {result.estimatedValue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
@@ -49,6 +62,14 @@ export default function App() {
               <span className="bg-slate-800 border border-slate-700 text-slate-400 px-2 py-1 rounded-full">
                 {savedProperties.length} saved
               </span>
+            )}
+            {input.sqft > 0 && (
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1 rounded-full transition"
+              >
+                {copied ? '✓ Copied!' : '🔗 Share'}
+              </button>
             )}
           </div>
         </div>
@@ -101,6 +122,7 @@ export default function App() {
               {activeTab === 'investment'   && <InvestmentAnalysis />}
               {activeTab === 'neighborhood' && <NeighborhoodScore />}
               {activeTab === 'mortgage'     && <MortgageCalc />}
+              {activeTab === 'appreciation' && <AppreciationCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
