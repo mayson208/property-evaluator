@@ -29,6 +29,8 @@ import Exchange1031 from './components/Exchange1031'
 import BuyingTimeline from './components/BuyingTimeline'
 import EnergyROI from './components/EnergyROI'
 import ShortTermRental from './components/ShortTermRental'
+import MultiFamilyCalc from './components/MultiFamilyCalc'
+import MaintenanceReserve from './components/MaintenanceReserve'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -59,6 +61,8 @@ const TABS = [
   { id: 'timeline',     label: 'Buy Guide',     icon: '📅' },
   { id: 'energyroi',   label: 'Green ROI',     icon: '🌱' },
   { id: 'str',         label: 'STR / Airbnb',  icon: '🏡' },
+  { id: 'multifamily', label: 'Multi-Family',  icon: '🏘' },
+  { id: 'maintenance', label: 'Maintenance',   icon: '🔧' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -177,6 +181,8 @@ export default function App() {
               {activeTab === 'timeline'     && <BuyingTimeline />}
               {activeTab === 'energyroi'   && <EnergyROI />}
               {activeTab === 'str'         && <ShortTermRental />}
+              {activeTab === 'multifamily' && <MultiFamilyCalc />}
+              {activeTab === 'maintenance' && <MaintenanceReserve />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
