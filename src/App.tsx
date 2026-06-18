@@ -96,6 +96,7 @@ import LeverageComparison from './components/LeverageComparison'
 import CommercialLease from './components/CommercialLease'
 import SelfStorage from './components/SelfStorage'
 import Section8Calc from './components/Section8Calc'
+import ConstructionLoanCalc from './components/ConstructionLoanCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -193,6 +194,7 @@ const TABS = [
   { id: 'commerciallease', label: 'Comm. Lease', icon: '🏢' },
   { id: 'selfstorage',   label: 'Self-Storage', icon: '🗄️' },
   { id: 'section8',      label: 'Section 8',    icon: '🏛' },
+  { id: 'constructionloan', label: 'Const. Loan', icon: '🏗' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -378,6 +380,7 @@ export default function App() {
               {activeTab === 'commerciallease' && <CommercialLease />}
               {activeTab === 'selfstorage'    && <SelfStorage />}
               {activeTab === 'section8'       && <Section8Calc />}
+              {activeTab === 'constructionloan' && <ConstructionLoanCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
