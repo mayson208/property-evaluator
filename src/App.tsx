@@ -105,6 +105,7 @@ import ForeclosureAuction from './components/ForeclosureAuction'
 import CRECapStack from './components/CRECapStack'
 import ShortSaleCalc from './components/ShortSaleCalc'
 import BridgeLoanCalc from './components/BridgeLoanCalc'
+import LandEntitlement from './components/LandEntitlement'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -211,6 +212,7 @@ const TABS = [
   { id: 'capstack',       label: 'Cap Stack',     icon: '🏛' },
   { id: 'shortsale',      label: 'Short Sale',    icon: '📉' },
   { id: 'bridgeloan',     label: 'Bridge Loan',   icon: '🌉' },
+  { id: 'entitlement',    label: 'Entitlement',   icon: '🗺️' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -405,6 +407,7 @@ export default function App() {
               {activeTab === 'capstack'         && <CRECapStack />}
               {activeTab === 'shortsale'        && <ShortSaleCalc />}
               {activeTab === 'bridgeloan'       && <BridgeLoanCalc />}
+              {activeTab === 'entitlement'      && <LandEntitlement />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
