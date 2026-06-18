@@ -102,6 +102,7 @@ import RentRollAnalyzer from './components/RentRollAnalyzer'
 import CondoConversion from './components/CondoConversion'
 import BiWeeklyMortgage from './components/BiWeeklyMortgage'
 import ForeclosureAuction from './components/ForeclosureAuction'
+import CRECapStack from './components/CRECapStack'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -205,6 +206,7 @@ const TABS = [
   { id: 'condoconvert',   label: 'Condo Convert', icon: '🏙' },
   { id: 'biweekly',       label: 'Mtg Accelerate', icon: '⚡' },
   { id: 'foreclosure',    label: 'Foreclosure',   icon: '🏚' },
+  { id: 'capstack',       label: 'Cap Stack',     icon: '🏛' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -396,6 +398,7 @@ export default function App() {
               {activeTab === 'condoconvert'     && <CondoConversion />}
               {activeTab === 'biweekly'         && <BiWeeklyMortgage />}
               {activeTab === 'foreclosure'      && <ForeclosureAuction />}
+              {activeTab === 'capstack'         && <CRECapStack />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
