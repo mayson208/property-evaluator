@@ -19,6 +19,7 @@ import WhatIfAnalyzer from './components/WhatIfAnalyzer'
 import ClosingCosts from './components/ClosingCosts'
 import CapGainsTax from './components/CapGainsTax'
 import StressTest from './components/StressTest'
+import AffordabilityCalc from './components/AffordabilityCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -39,6 +40,7 @@ const TABS = [
   { id: 'closing',       label: 'Closing',      icon: '📋' },
   { id: 'capgains',      label: 'Cap Gains',    icon: '📊' },
   { id: 'stress',        label: 'Stress Test',  icon: '⚡' },
+  { id: 'affordability', label: 'Affordability', icon: '💡' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -147,6 +149,7 @@ export default function App() {
               {activeTab === 'closing'      && <ClosingCosts />}
               {activeTab === 'capgains'     && <CapGainsTax />}
               {activeTab === 'stress'       && <StressTest />}
+              {activeTab === 'affordability' && <AffordabilityCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
