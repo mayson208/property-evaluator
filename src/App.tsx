@@ -69,6 +69,7 @@ import BuyNowVsWait from './components/BuyNowVsWait'
 import FIRECalc from './components/FIRECalc'
 import MortgageRecast from './components/MortgageRecast'
 import JointVenture from './components/JointVenture'
+import CRECalc from './components/CRECalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -139,6 +140,7 @@ const TABS = [
   { id: 'firecalc',     label: 'RE FIRE',         icon: '🔥' },
   { id: 'recast',       label: 'Recast',          icon: '💲' },
   { id: 'jv',           label: 'Joint Venture',   icon: '🤝' },
+  { id: 'cre',          label: 'Commercial RE',   icon: '🏢' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -297,6 +299,7 @@ export default function App() {
               {activeTab === 'firecalc'    && <FIRECalc />}
               {activeTab === 'recast'      && <MortgageRecast />}
               {activeTab === 'jv'          && <JointVenture />}
+              {activeTab === 'cre'         && <CRECalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
