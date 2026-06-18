@@ -17,6 +17,7 @@ import RentVsBuy from './components/RentVsBuy'
 import PropertyScorecard from './components/PropertyScorecard'
 import WhatIfAnalyzer from './components/WhatIfAnalyzer'
 import ClosingCosts from './components/ClosingCosts'
+import CapGainsTax from './components/CapGainsTax'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -35,6 +36,7 @@ const TABS = [
   { id: 'mortgage',      label: 'Mortgage',     icon: '🏦' },
   { id: 'whatif',        label: 'What-If',      icon: '🔮' },
   { id: 'closing',       label: 'Closing',      icon: '📋' },
+  { id: 'capgains',      label: 'Cap Gains',    icon: '📊' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -141,6 +143,7 @@ export default function App() {
               {activeTab === 'mortgage'     && <MortgageCalc />}
               {activeTab === 'whatif'       && <WhatIfAnalyzer />}
               {activeTab === 'closing'      && <ClosingCosts />}
+              {activeTab === 'capgains'     && <CapGainsTax />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
