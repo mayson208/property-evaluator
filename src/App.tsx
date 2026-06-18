@@ -92,6 +92,7 @@ import HoldVsSell from './components/HoldVsSell'
 import MobileHomePark from './components/MobileHomePark'
 import SellerFinancing from './components/SellerFinancing'
 import ADUCalc from './components/ADUCalc'
+import LeverageComparison from './components/LeverageComparison'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -185,6 +186,7 @@ const TABS = [
   { id: 'mhp',           label: 'Mobile Home Park', icon: '🏘' },
   { id: 'sellerfinance', label: 'Seller Finance', icon: '📝' },
   { id: 'adu',           label: 'ADU',           icon: '🏠' },
+  { id: 'leverage',      label: 'Leverage',      icon: '📐' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -366,6 +368,7 @@ export default function App() {
               {activeTab === 'mhp'          && <MobileHomePark />}
               {activeTab === 'sellerfinance' && <SellerFinancing />}
               {activeTab === 'adu'          && <ADUCalc />}
+              {activeTab === 'leverage'     && <LeverageComparison />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
