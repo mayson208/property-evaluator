@@ -104,6 +104,7 @@ import BiWeeklyMortgage from './components/BiWeeklyMortgage'
 import ForeclosureAuction from './components/ForeclosureAuction'
 import CRECapStack from './components/CRECapStack'
 import ShortSaleCalc from './components/ShortSaleCalc'
+import BridgeLoanCalc from './components/BridgeLoanCalc'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -209,6 +210,7 @@ const TABS = [
   { id: 'foreclosure',    label: 'Foreclosure',   icon: '🏚' },
   { id: 'capstack',       label: 'Cap Stack',     icon: '🏛' },
   { id: 'shortsale',      label: 'Short Sale',    icon: '📉' },
+  { id: 'bridgeloan',     label: 'Bridge Loan',   icon: '🌉' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -402,6 +404,7 @@ export default function App() {
               {activeTab === 'foreclosure'      && <ForeclosureAuction />}
               {activeTab === 'capstack'         && <CRECapStack />}
               {activeTab === 'shortsale'        && <ShortSaleCalc />}
+              {activeTab === 'bridgeloan'       && <BridgeLoanCalc />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
