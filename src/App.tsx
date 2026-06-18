@@ -94,6 +94,7 @@ import SellerFinancing from './components/SellerFinancing'
 import ADUCalc from './components/ADUCalc'
 import LeverageComparison from './components/LeverageComparison'
 import CommercialLease from './components/CommercialLease'
+import SelfStorage from './components/SelfStorage'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -189,6 +190,7 @@ const TABS = [
   { id: 'adu',           label: 'ADU',           icon: '🏠' },
   { id: 'leverage',      label: 'Leverage',      icon: '📐' },
   { id: 'commerciallease', label: 'Comm. Lease', icon: '🏢' },
+  { id: 'selfstorage',   label: 'Self-Storage', icon: '🗄️' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -372,6 +374,7 @@ export default function App() {
               {activeTab === 'adu'          && <ADUCalc />}
               {activeTab === 'leverage'     && <LeverageComparison />}
               {activeTab === 'commerciallease' && <CommercialLease />}
+              {activeTab === 'selfstorage'    && <SelfStorage />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
