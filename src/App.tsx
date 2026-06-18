@@ -75,6 +75,7 @@ import SDIRACalc from './components/SDIRACalc'
 import NoteInvesting from './components/NoteInvesting'
 import RentToOwn from './components/RentToOwn'
 import CondoVsHouse from './components/CondoVsHouse'
+import PropertyDevelopment from './components/PropertyDevelopment'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -151,6 +152,7 @@ const TABS = [
   { id: 'noteinvest',   label: 'Note Investing',  icon: '📜' },
   { id: 'renttoown',    label: 'Rent-to-Own',    icon: '🔑' },
   { id: 'condovhouse',  label: 'Condo vs House', icon: '🏙' },
+  { id: 'devproforma',  label: 'Development',   icon: '🏗' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -315,6 +317,7 @@ export default function App() {
               {activeTab === 'noteinvest'  && <NoteInvesting />}
               {activeTab === 'renttoown'   && <RentToOwn />}
               {activeTab === 'condovhouse' && <CondoVsHouse />}
+              {activeTab === 'devproforma' && <PropertyDevelopment />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
