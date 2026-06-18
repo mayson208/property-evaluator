@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# PropValue — Property Value Evaluator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-featured property value estimation tool built with React, TypeScript, and Recharts.
 
-Currently, two official plugins are available:
+**Live:** https://github.com/mayson208/property-evaluator
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Tab | What it does |
+|-----|-------------|
+| 🏠 Valuation | Estimates property value using sales comparison + cost approach hybrid |
+| 🏘 Comps | Shows 5 comparable sales with per-attribute adjustments |
+| 📈 Market | 24-month area price trends, days-on-market, inventory charts |
+| 📅 History | Year-by-year appreciation using US NAR/FHFA data + future projection |
+| 🔨 Renovation | ROI calculator for 10 common renovations with editable cost/value |
+| 💰 Investment | Cap rate, cash-on-cash, gross/net yield, monthly cash flow, 5yr equity |
+| 📍 Area | Neighborhood scores (schools, safety, walkability, transit, amenities) |
+| 🏦 Mortgage | Full PITI breakdown, 15/30yr comparison, amortisation chart |
+| ⚖️ Compare | Side-by-side comparison of two properties |
+| 💾 Saved | Save up to 20 properties to localStorage |
+| 🖨 Report | Print-ready PDF report with full valuation summary |
 
-## Expanding the ESLint configuration
+## Valuation Methodology
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. **Base value** — Living area × state-level price-per-sqft median
+2. **Adjustments** — Condition, age depreciation, lot premium, garage, pool, basement, fireplace, bed/bath normalisation, property type
+3. **Comp blend** — 5 comparable sales generated with per-attribute adjustments; final value = 45% cost approach + 55% comp approach
+4. **Confidence score** — Data completeness rating (0–97%)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Share
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Click **🔗 Share** in the header to copy a URL with your property encoded as a base64 query param. Recipients open the link and the property auto-loads and calculates.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Stack
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- React 18 + TypeScript + Vite
+- Tailwind CSS
+- Zustand (state + localStorage persistence)
+- Recharts (AreaChart, LineChart, BarChart, RadarChart)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Run locally
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
