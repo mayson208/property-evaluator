@@ -50,6 +50,8 @@ import BorrowerQualifier from './components/BorrowerQualifier'
 import LeaseOption from './components/LeaseOption'
 import OwnerFinancing from './components/OwnerFinancing'
 import CashFlowSensitivity from './components/CashFlowSensitivity'
+import NewConstruction from './components/NewConstruction'
+import InspectionCosts from './components/InspectionCosts'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -101,6 +103,8 @@ const TABS = [
   { id: 'leaseoption', label: 'Lease Option',  icon: '🔑' },
   { id: 'ownerfinance',label: 'Seller Finance',icon: '🤝' },
   { id: 'sensitivity', label: 'Sensitivity',   icon: '📊' },
+  { id: 'newconstruct',label: 'Build vs Buy',  icon: '🏗' },
+  { id: 'inspection',  label: 'Inspection',    icon: '🔍' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -240,6 +244,8 @@ export default function App() {
               {activeTab === 'leaseoption' && <LeaseOption />}
               {activeTab === 'ownerfinance'&& <OwnerFinancing />}
               {activeTab === 'sensitivity' && <CashFlowSensitivity />}
+              {activeTab === 'newconstruct'&& <NewConstruction />}
+              {activeTab === 'inspection'  && <InspectionCosts />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
