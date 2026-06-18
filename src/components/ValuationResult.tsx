@@ -1,4 +1,5 @@
 import { usePropertyStore } from '../store/usePropertyStore'
+import { getAnnualPropertyTax, getAnnualInsurance, getAnnualMaintenance } from '../engine/valuation'
 
 function fmt(n: number) {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -42,6 +43,11 @@ export default function ValuationResult() {
   const equity = input.purchasePrice
     ? result.estimatedValue - input.purchasePrice
     : null
+
+  const annualTax   = getAnnualPropertyTax(result.estimatedValue, input.state)
+  const annualIns   = getAnnualInsurance(result.estimatedValue)
+  const annualMaint = getAnnualMaintenance(result.estimatedValue, input.yearBuilt)
+  const totalAnnualCost = annualTax + annualIns + annualMaint
 
   return (
     <div className="space-y-4">
@@ -143,6 +149,28 @@ export default function ValuationResult() {
             <p className="text-base font-bold text-slate-200 mt-0.5">{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Annual cost estimates */}
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs text-slate-400 mb-3 uppercase tracking-widest">Est. Annual Carrying Costs</p>
+        <div className="space-y-2">
+          {[
+            { label: 'Property Tax',      amount: annualTax,   note: `${input.state} rate` },
+            { label: 'Homeowner\'s Ins.', amount: annualIns,   note: '~0.5%' },
+            { label: 'Maintenance',       amount: annualMaint, note: input.yearBuilt < 1990 ? '1.5%/yr' : '1.0%/yr' },
+          ].map(row => (
+            <div key={row.label} className="flex items-center justify-between text-sm">
+              <span className="text-slate-400">{row.label} <span className="text-slate-600 text-xs">({row.note})</span></span>
+              <span className="text-slate-300 font-mono font-semibold">{fmt(row.amount)}/yr</span>
+            </div>
+          ))}
+          <div className="border-t border-slate-700 pt-2 flex justify-between text-sm font-bold">
+            <span className="text-slate-300">Total (excl. mortgage)</span>
+            <span className="text-white font-mono">{fmt(totalAnnualCost)}/yr</span>
+          </div>
+          <p className="text-xs text-slate-600">{fmt(Math.round(totalAnnualCost / 12))}/mo additional to your mortgage payment</p>
+        </div>
       </div>
 
       {/* Save button */}

@@ -28,16 +28,21 @@ const DEFAULT_INPUT: PropertyInput = {
 }
 
 const DEFAULT_RENOVATIONS: RenovationItem[] = [
-  { id: 'kitchen',   name: 'Kitchen Remodel',      cost: 25000,  valueAdd: 35000,  roi: 40  },
-  { id: 'bath',      name: 'Bathroom Update',       cost: 12000,  valueAdd: 16000,  roi: 33  },
-  { id: 'roof',      name: 'Roof Replacement',      cost: 14000,  valueAdd: 17000,  roi: 21  },
-  { id: 'hvac',      name: 'HVAC System',           cost: 8000,   valueAdd: 9500,   roi: 19  },
-  { id: 'landscape', name: 'Landscaping / Curb',    cost: 6000,   valueAdd: 9000,   roi: 50  },
-  { id: 'floors',    name: 'Hardwood Floors',       cost: 10000,  valueAdd: 14000,  roi: 40  },
-  { id: 'windows',   name: 'Window Replacement',    cost: 9000,   valueAdd: 10800,  roi: 20  },
-  { id: 'siding',    name: 'New Siding / Paint',    cost: 11000,  valueAdd: 14000,  roi: 27  },
-  { id: 'addition',  name: 'Room Addition',         cost: 65000,  valueAdd: 55000,  roi: -15 },
-  { id: 'solar',     name: 'Solar Panels',          cost: 20000,  valueAdd: 18000,  roi: -10 },
+  { id: 'kitchen',   name: 'Kitchen Remodel',       cost: 25000,  valueAdd: 35000,  roi: 40  },
+  { id: 'bath',      name: 'Bathroom Update',        cost: 12000,  valueAdd: 16000,  roi: 33  },
+  { id: 'roof',      name: 'Roof Replacement',       cost: 14000,  valueAdd: 17000,  roi: 21  },
+  { id: 'hvac',      name: 'HVAC System',            cost: 8000,   valueAdd: 9500,   roi: 19  },
+  { id: 'landscape', name: 'Landscaping / Curb',     cost: 6000,   valueAdd: 9000,   roi: 50  },
+  { id: 'floors',    name: 'Hardwood Floors',        cost: 10000,  valueAdd: 14000,  roi: 40  },
+  { id: 'windows',   name: 'Window Replacement',     cost: 9000,   valueAdd: 10800,  roi: 20  },
+  { id: 'siding',    name: 'New Siding / Paint',     cost: 11000,  valueAdd: 14000,  roi: 27  },
+  { id: 'addition',  name: 'Room Addition (500 sqft)', cost: 65000, valueAdd: 55000, roi: -15 },
+  { id: 'solar',     name: 'Solar Panels (6kW)',     cost: 20000,  valueAdd: 18000,  roi: -10 },
+  { id: 'deck',      name: 'Deck / Patio Addition',  cost: 15000,  valueAdd: 12000,  roi: -20 },
+  { id: 'pool',      name: 'Inground Pool',          cost: 55000,  valueAdd: 30000,  roi: -45 },
+  { id: 'attic',     name: 'Attic Conversion',       cost: 40000,  valueAdd: 55000,  roi: 38  },
+  { id: 'basement',  name: 'Basement Finishing',     cost: 30000,  valueAdd: 35000,  roi: 17  },
+  { id: 'closet',    name: 'Master Closet Upgrade',  cost: 5000,   valueAdd: 7500,   roi: 50  },
 ]
 
 const DEMO_PROPERTIES: PropertyInput[] = [

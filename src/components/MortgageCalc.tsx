@@ -182,6 +182,24 @@ export default function MortgageCalc() {
         </div>
       )}
 
+      {/* Amortisation export */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => {
+            const headers = ['Year', 'Balance ($)', 'Equity ($)', 'Cumulative Interest ($)', 'Monthly Payment ($)']
+            const rows = amortData.map(d => [d.year, d.balance * 1000, d.equity * 1000, d.cumInterest * 1000, Math.round(monthlyPI)])
+            const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+            const blob = new Blob([csv], { type: 'text/csv' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a'); a.href = url; a.download = 'amortization.csv'; a.click()
+            URL.revokeObjectURL(url)
+          }}
+          className="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 rounded-lg transition font-semibold"
+        >
+          Export CSV
+        </button>
+      </div>
+
       {/* Amortisation chart */}
       <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
         <p className="text-xs text-slate-400 uppercase tracking-widest mb-4">Amortisation ($K)</p>
