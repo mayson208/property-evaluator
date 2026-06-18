@@ -65,6 +65,7 @@ import RentalTaxCalc from './components/RentalTaxCalc'
 import PropertyInsurance from './components/PropertyInsurance'
 import PMIRemoval from './components/PMIRemoval'
 import EscrowAnalysis from './components/EscrowAnalysis'
+import BuyNowVsWait from './components/BuyNowVsWait'
 import { buildShareUrl } from './utils/share'
 import { useState } from 'react'
 
@@ -131,6 +132,7 @@ const TABS = [
   { id: 'insurance',    label: 'Insurance',       icon: '🛡' },
   { id: 'pmiremoval',   label: 'PMI Removal',     icon: '✂️' },
   { id: 'escrow',       label: 'Escrow',          icon: '🏛' },
+  { id: 'buywait',      label: 'Buy vs Wait',     icon: '⏳' },
   { id: 'compare',       label: 'Compare',      icon: '🔀' },
   { id: 'saved',         label: 'Saved',        icon: '💾' },
   { id: 'report',        label: 'Report',       icon: '🖨' },
@@ -285,6 +287,7 @@ export default function App() {
               {activeTab === 'insurance'   && <PropertyInsurance />}
               {activeTab === 'pmiremoval'  && <PMIRemoval />}
               {activeTab === 'escrow'      && <EscrowAnalysis />}
+              {activeTab === 'buywait'     && <BuyNowVsWait />}
               {activeTab === 'compare'      && <PropertyComparison />}
               {activeTab === 'saved'        && <SavedProperties />}
               {activeTab === 'report'       && <PrintReport />}
